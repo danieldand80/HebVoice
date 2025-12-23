@@ -2,11 +2,22 @@ from vertexai.preview.vision_models import ImageGenerationModel
 import vertexai
 import os
 import base64
+import json
+import tempfile
 from typing import Literal
 
 # Initialize Vertex AI
 PROJECT_ID = os.getenv("GOOGLE_PROJECT_ID")
 LOCATION = os.getenv("GOOGLE_LOCATION", "us-central1")
+
+# Handle credentials from env or file (for Railway deployment)
+credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+if credentials_json:
+    # For Railway/cloud: use JSON from env variable
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        f.write(credentials_json)
+        credentials_path = f.name
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
 
 if PROJECT_ID:
     vertexai.init(project=PROJECT_ID, location=LOCATION)
