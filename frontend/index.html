@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hebrew Image Generator - מחולל תמונות בעברית</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎨 מחולל תמונות מוצר בעברית</h1>
+            <p>צור תמונות מוצר מקצועיות עם טקסט בעברית</p>
+        </header>
+
+        <!-- Step 1: Generate Image -->
+        <div id="step1" class="step-container">
+            <h2>שלב 1: יצירת התמונה</h2>
+            
+            <form id="imageForm">
+                <div class="form-group">
+                    <label>בחר פורמט:</label>
+                    <div class="format-selector">
+                        <label class="format-option">
+                            <input type="radio" name="aspect_ratio" value="16:9" checked>
+                            <span>16:9 (אופקי)</span>
+                        </label>
+                        <label class="format-option">
+                            <input type="radio" name="aspect_ratio" value="9:16">
+                            <span>9:16 (אנכי)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="prompt">תיאור המוצר/סצנה: *</label>
+                    <textarea 
+                        id="prompt" 
+                        name="prompt" 
+                        required 
+                        rows="4"
+                        placeholder="לדוגמה: Premium running shoes, professional product photography, white background, studio lighting"
+                    ></textarea>
+                    <small>כתוב באנגלית לתוצאות מיטביות</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="image">העלה תמונת מוצר (אופציונלי):</label>
+                    <input 
+                        type="file" 
+                        id="image" 
+                        name="image" 
+                        accept="image/*"
+                    >
+                    <div id="imagePreview"></div>
+                </div>
+
+                <button type="submit" id="generateBtn" class="btn-primary">
+                    <span id="generateBtnText">צור תמונה</span>
+                    <span id="generateLoader" class="loader" style="display: none;"></span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Step 2: Add Text -->
+        <div id="step2" class="step-container" style="display: none;">
+            <h2>שלב 2: הוספת טקסט בעברית</h2>
+            
+            <div class="two-columns">
+                <div class="column">
+                    <h3>תצוגה מקדימה</h3>
+                    <div id="imagePreviewContainer">
+                        <img id="generatedImage" src="" alt="Generated Image">
+                        <div id="textOverlay"></div>
+                    </div>
+                </div>
+
+                <div class="column">
+                    <h3>עריכת טקסט</h3>
+                    
+                    <div class="form-group">
+                        <label>הצעות לטקסט:</label>
+                        <button type="button" id="suggestTextsBtn" class="btn-secondary">
+                            💡 הצע טקסטים
+                        </button>
+                        <div id="textSuggestions"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="hebrewText">טקסט בעברית:</label>
+                        <input 
+                            type="text" 
+                            id="hebrewText" 
+                            placeholder="הכנס טקסט בעברית..."
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fontSize">גודל גופן:</label>
+                        <input type="range" id="fontSize" min="30" max="150" value="60">
+                        <span id="fontSizeValue">60</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="textColor">צבע טקסט:</label>
+                        <input type="color" id="textColor" value="#FFFFFF">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="strokeColor">צבע מתאר:</label>
+                        <input type="color" id="strokeColor" value="#000000">
+                    </div>
+
+                    <div class="form-group">
+                        <label>מיקום מוצע:</label>
+                        <div id="suggestedPositions"></div>
+                    </div>
+
+                    <button type="button" id="addTextBtn" class="btn-primary">
+                        ➕ הוסף טקסט
+                    </button>
+
+                    <button type="button" id="downloadBtn" class="btn-success" style="display: none;">
+                        ⬇️ הורד תמונה
+                    </button>
+
+                    <button type="button" id="startOverBtn" class="btn-secondary">
+                        🔄 התחל מחדש
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="error" class="error" style="display: none;"></div>
+        <div id="success" class="success" style="display: none;"></div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
+
