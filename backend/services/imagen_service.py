@@ -13,16 +13,35 @@ PROJECT_ID = os.getenv("GOOGLE_PROJECT_ID")
 LOCATION = os.getenv("GOOGLE_LOCATION", "us-central1")
 
 # Handle credentials from env or file (for Railway deployment)
-credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
-if credentials_json:
-    # For Railway/cloud: use JSON from env variable
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-        f.write(credentials_json)
-        credentials_path = f.name
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
+credentials_json_str = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+credentials = None
+
+if credentials_json_str:
+    try:
+        # Parse JSON from env variable
+        credentials_dict = json.loads(credentials_json_str)
+        
+        # Create temporary credentials file
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(credentials_dict, f)
+            credentials_path = f.name
+        
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
+        
+        # Also create credentials object directly
+        from google.oauth2 import service_account
+        credentials = service_account.Credentials.from_service_account_info(credentials_dict)
+        
+    except Exception as e:
+        print(f"WARNING: Failed to load credentials from JSON: {e}")
+        # Will try to use default credentials
 
 if PROJECT_ID:
-    vertexai.init(project=PROJECT_ID, location=LOCATION)
+    vertexai.init(
+        project=PROJECT_ID, 
+        location=LOCATION,
+        credentials=credentials
+    )
 
 AspectRatio = Literal["9:16", "16:9"]
 
@@ -53,28 +72,33 @@ async def generate_image_from_prompt(
     # Get first image
     image = response.images[0]
     
-    # Convert to bytes - Imagen API returns image with save method
+    # Convert to bytes - use _pil_image attribute
     try:
-        buffer = io.BytesIO()
-        # Use the save method provided by Imagen
-        image.save(location=buffer, mime_type='image/png')
-        buffer.seek(0)
-        image_bytes = buffer.read()
-    except AttributeError:
-        # Fallback: try _image_bytes attribute
-        try:
-            if hasattr(image, '_image_bytes'):
-                image_bytes = image._image_bytes
-            elif hasattr(image, '_pil_image'):
-                buffer = io.BytesIO()
-                image._pil_image.save(buffer, format='PNG')
-                image_bytes = buffer.getvalue()
-            else:
-                raise Exception(f"Unknown image format. Available attributes: {dir(image)}")
-        except Exception as e:
-            raise Exception(f"Failed to convert image to bytes: {str(e)}")
-    
-    return image_bytes
+        # Imagen returns object with _pil_image attribute
+        if hasattr(image, '_pil_image'):
+            pil_image = image._pil_image
+            buffer = io.BytesIO()
+            pil_image.save(buffer, format='PNG')
+            buffer.seek(0)
+            image_bytes = buffer.getvalue()
+        elif hasattr(image, '_image_bytes'):
+            # Direct bytes attribute
+            image_bytes = image._image_bytes
+        else:
+            # Last resort: save to temp file and read
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
+                image.save(location=tmp.name)
+                tmp.seek(0)
+                with open(tmp.name, 'rb') as f:
+                    image_bytes = f.read()
+                os.unlink(tmp.name)
+        
+        return image_bytes
+        
+    except Exception as e:
+        import traceback
+        raise Exception(f"Failed to convert Imagen image to bytes: {str(e)}\n\nTraceback: {traceback.format_exc()}\n\nAvailable attributes: {dir(image)}")
 
 
 async def enhance_product_image(
