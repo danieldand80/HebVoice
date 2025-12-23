@@ -57,23 +57,32 @@ async def generate_image_from_prompt(
     # Initialize Imagen model
     model = ImageGenerationModel.from_pretrained("imagegeneration@006")
     
-    # Generate image (Imagen 3 API)
-    # Note: aspect_ratio parameter may not be supported in all versions
-    try:
-        response = model.generate_images(
-            prompt=prompt,
-            number_of_images=1,
-            # Try with aspect_ratio parameter first
-        )
-    except TypeError:
-        # Fallback if aspect_ratio not supported
-        response = model.generate_images(
-            prompt=prompt,
-            number_of_images=1
-        )
+    # Calculate target size based on aspect ratio
+    if aspect_ratio == "9:16":
+        # Vertical format (e.g., 1080x1920)
+        width, height = 1024, 1792
+    else:
+        # Horizontal format 16:9 (e.g., 1920x1080)
+        width, height = 1792, 1024
+    
+    # Generate image
+    print(f"Generating image with prompt: {prompt}")
+    response = model.generate_images(
+        prompt=prompt,
+        number_of_images=1
+    )
+    
+    print(f"Response received. Type: {type(response)}")
+    print(f"Response attributes: {dir(response)}")
+    print(f"Number of images: {len(response.images) if hasattr(response, 'images') else 'N/A'}")
+    
+    # Check if images were generated
+    if not response.images or len(response.images) == 0:
+        raise Exception(f"No images generated. Response: {response}")
     
     # Get first image
     image = response.images[0]
+    print(f"Image type: {type(image)}, Image attributes: {dir(image)}")
     
     # Convert to bytes - use _pil_image attribute
     try:
