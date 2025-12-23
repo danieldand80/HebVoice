@@ -56,20 +56,27 @@ async def generate_image(
         
         # Generate image
         if image:
-            # Use uploaded image directly (don't generate new one)
+            # User uploaded image - edit it based on prompt
             image_path = UPLOAD_DIR / f"{job_id}_{image.filename}"
             with open(image_path, "wb") as f:
                 content = await image.read()
                 f.write(content)
             
-            # Read uploaded image as bytes
-            with open(image_path, "rb") as f:
-                image_bytes = f.read()
+            if prompt and prompt.strip():
+                # Edit the uploaded image based on prompt
+                image_bytes = await enhance_product_image(str(image_path), prompt, aspect_ratio)
+            else:
+                # No prompt - use uploaded image as-is
+                with open(image_path, "rb") as f:
+                    image_bytes = f.read()
             
             # Clean up temp file
             os.remove(image_path)
         else:
-            # Generate from text prompt only
+            # No image uploaded - generate new image from prompt
+            if not prompt or not prompt.strip():
+                raise HTTPException(status_code=400, detail="Either image or prompt is required")
+            
             image_bytes = await generate_image_from_prompt(prompt, aspect_ratio)
         
         # Save generated image

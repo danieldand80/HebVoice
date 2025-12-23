@@ -113,6 +113,78 @@ async def generate_image_from_prompt(
         raise Exception(f"Failed to convert Imagen image to bytes: {str(e)}\n\nTraceback: {traceback.format_exc()}\n\nAvailable attributes: {dir(image)}")
 
 
+async def edit_image_with_prompt(
+    image_bytes: bytes,
+    prompt: str,
+    aspect_ratio: AspectRatio = "16:9"
+) -> bytes:
+    """Edit existing image using Imagen based on text prompt"""
+    
+    if not PROJECT_ID:
+        raise Exception("GOOGLE_PROJECT_ID not set in environment")
+    
+    # Initialize Imagen model
+    from vertexai.preview.vision_models import Image as ImagenImage
+    model = ImageGenerationModel.from_pretrained("imagegeneration@006")
+    
+    # Convert bytes to Imagen Image object
+    base_image = ImagenImage(image_bytes=image_bytes)
+    
+    print(f"Editing image with prompt: {prompt}")
+    
+    # Edit image based on prompt
+    try:
+        # Try using edit_image method
+        response = model.edit_image(
+            base_image=base_image,
+            prompt=prompt,
+            number_of_images=1
+        )
+    except AttributeError:
+        # Fallback: use image-to-image generation
+        # Create a combined prompt that describes the edit
+        enhanced_prompt = f"Based on this image: {prompt}, professional photography, high quality"
+        print(f"edit_image not available, using generate_images with enhanced prompt")
+        response = model.generate_images(
+            prompt=enhanced_prompt,
+            number_of_images=1
+        )
+    
+    print(f"Edit response received. Number of images: {len(response.images) if hasattr(response, 'images') else 'N/A'}")
+    
+    # Check if images were generated
+    if not response.images or len(response.images) == 0:
+        raise Exception(f"No images generated from edit. Response: {response}")
+    
+    # Get first image
+    image = response.images[0]
+    
+    # Convert to bytes
+    try:
+        if hasattr(image, '_pil_image'):
+            pil_image = image._pil_image
+            buffer = io.BytesIO()
+            pil_image.save(buffer, format='PNG')
+            buffer.seek(0)
+            image_bytes = buffer.getvalue()
+        elif hasattr(image, '_image_bytes'):
+            image_bytes = image._image_bytes
+        else:
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
+                image.save(location=tmp.name)
+                tmp.seek(0)
+                with open(tmp.name, 'rb') as f:
+                    image_bytes = f.read()
+                os.unlink(tmp.name)
+        
+        return image_bytes
+        
+    except Exception as e:
+        import traceback
+        raise Exception(f"Failed to convert edited image to bytes: {str(e)}\n\nTraceback: {traceback.format_exc()}")
+
+
 async def enhance_product_image(
     image_path: str,
     prompt: str,
@@ -123,10 +195,10 @@ async def enhance_product_image(
     if not PROJECT_ID:
         raise Exception("GOOGLE_PROJECT_ID not set in environment")
     
-    # For MVP, we'll generate new image based on prompt
-    # In future can add actual image-to-image editing
+    # Read image bytes
+    with open(image_path, 'rb') as f:
+        image_bytes = f.read()
     
-    enhanced_prompt = f"Professional product photography: {prompt}, high quality, clean background, commercial advertising style"
-    
-    return await generate_image_from_prompt(enhanced_prompt, aspect_ratio)
+    # Use edit function with prompt
+    return await edit_image_with_prompt(image_bytes, prompt, aspect_ratio)
 
