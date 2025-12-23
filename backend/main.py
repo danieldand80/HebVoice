@@ -56,14 +56,17 @@ async def generate_image(
         
         # Generate image
         if image:
-            # Save uploaded image
+            # Use uploaded image directly (don't generate new one)
             image_path = UPLOAD_DIR / f"{job_id}_{image.filename}"
             with open(image_path, "wb") as f:
                 content = await image.read()
                 f.write(content)
             
-            # Enhance product image
-            image_bytes = await enhance_product_image(str(image_path), prompt, aspect_ratio)
+            # Read uploaded image as bytes
+            with open(image_path, "rb") as f:
+                image_bytes = f.read()
+            
+            # Clean up temp file
             os.remove(image_path)
         else:
             # Generate from text prompt only
