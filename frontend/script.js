@@ -1,6 +1,7 @@
 let currentImageId = null;
 let currentImageData = null;
 let textPosition = { x: 0, y: 0 };
+let currentLang = 'he'; // Default Hebrew
 
 // Elements
 const imageForm = document.getElementById('imageForm');
@@ -259,4 +260,43 @@ function hideMessages() {
     errorDiv.style.display = 'none';
     successDiv.style.display = 'none';
 }
+
+// Language switching
+function toggleLanguage() {
+    currentLang = currentLang === 'he' ? 'en' : 'he';
+    
+    // Update HTML lang and dir
+    document.documentElement.lang = currentLang;
+    document.documentElement.dir = currentLang === 'he' ? 'rtl' : 'ltr';
+    
+    // Update all elements with translations
+    document.querySelectorAll('[data-en][data-he]').forEach(el => {
+        const text = currentLang === 'en' ? el.getAttribute('data-en') : el.getAttribute('data-he');
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+            el.placeholder = text;
+        } else {
+            el.textContent = text;
+        }
+    });
+    
+    // Update placeholders
+    document.querySelectorAll('[data-placeholder-en][data-placeholder-he]').forEach(el => {
+        const placeholder = currentLang === 'en' ? el.getAttribute('data-placeholder-en') : el.getAttribute('data-placeholder-he');
+        el.placeholder = placeholder;
+    });
+    
+    // Update language button
+    document.getElementById('langText').textContent = currentLang === 'he' ? 'EN' : 'HE';
+    
+    // Save preference
+    localStorage.setItem('language', currentLang);
+}
+
+// Load saved language preference
+window.addEventListener('DOMContentLoaded', () => {
+    const savedLang = localStorage.getItem('language');
+    if (savedLang && savedLang !== currentLang) {
+        toggleLanguage();
+    }
+});
 

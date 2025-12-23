@@ -9,43 +9,54 @@
 <body>
     <div class="container">
         <header>
-            <h1>🎨 מחולל תמונות מוצר בעברית</h1>
-            <p>צור תמונות מוצר מקצועיות עם טקסט בעברית</p>
+            <div class="header-content">
+                <div>
+                    <h1 data-en="🎨 Product Image Generator" data-he="🎨 מחולל תמונות מוצר בעברית">🎨 מחולל תמונות מוצר בעברית</h1>
+                    <p data-en="Create professional product images with Hebrew text" data-he="צור תמונות מוצר מקצועיות עם טקסט בעברית">צור תמונות מוצר מקצועיות עם טקסט בעברית</p>
+                </div>
+                <div class="language-switcher">
+                    <button id="langBtn" class="lang-btn" onclick="toggleLanguage()">
+                        <span id="langText">EN</span> 🌐
+                    </button>
+                </div>
+            </div>
         </header>
 
         <!-- Step 1: Generate Image -->
         <div id="step1" class="step-container">
-            <h2>שלב 1: יצירת התמונה</h2>
+            <h2 data-en="Step 1: Generate Image" data-he="שלב 1: יצירת התמונה">שלב 1: יצירת התמונה</h2>
             
             <form id="imageForm">
                 <div class="form-group">
-                    <label>בחר פורמט:</label>
+                    <label data-en="Choose Format:" data-he="בחר פורמט:">בחר פורמט:</label>
                     <div class="format-selector">
                         <label class="format-option">
                             <input type="radio" name="aspect_ratio" value="16:9" checked>
-                            <span>16:9 (אופקי)</span>
+                            <span data-en="16:9 (Horizontal)" data-he="16:9 (אופקי)">16:9 (אופקי)</span>
                         </label>
                         <label class="format-option">
                             <input type="radio" name="aspect_ratio" value="9:16">
-                            <span>9:16 (אנכי)</span>
+                            <span data-en="9:16 (Vertical)" data-he="9:16 (אנכי)">9:16 (אנכי)</span>
                         </label>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="prompt">תיאור המוצר/סצנה: *</label>
+                    <label for="prompt" data-en="Product/Scene Description: *" data-he="תיאור המוצר/סצנה: *">תיאור המוצר/סצנה: *</label>
                     <textarea 
                         id="prompt" 
                         name="prompt" 
                         required 
                         rows="4"
+                        data-placeholder-en="Example: Premium running shoes, professional product photography, white background, studio lighting"
+                        data-placeholder-he="לדוגמה: Premium running shoes, professional product photography, white background, studio lighting"
                         placeholder="לדוגמה: Premium running shoes, professional product photography, white background, studio lighting"
                     ></textarea>
-                    <small>כתוב באנגלית לתוצאות מיטביות</small>
+                    <small data-en="Write in English for best results" data-he="כתוב באנגלית לתוצאות מיטביות">כתוב באנגלית לתוצאות מיטביות</small>
                 </div>
 
                 <div class="form-group">
-                    <label for="image">העלה תמונת מוצר (אופציונלי):</label>
+                    <label for="image" data-en="Upload Product Image (optional):" data-he="העלה תמונת מוצר (אופציונלי):">העלה תמונת מוצר (אופציונלי):</label>
                     <input 
                         type="file" 
                         id="image" 
@@ -56,7 +67,7 @@
                 </div>
 
                 <button type="submit" id="generateBtn" class="btn-primary">
-                    <span id="generateBtnText">צור תמונה</span>
+                    <span id="generateBtnText" data-en="Generate Image" data-he="צור תמונה">צור תמונה</span>
                     <span id="generateLoader" class="loader" style="display: none;"></span>
                 </button>
             </form>
@@ -64,11 +75,11 @@
 
         <!-- Step 2: Add Text -->
         <div id="step2" class="step-container" style="display: none;">
-            <h2>שלב 2: הוספת טקסט בעברית</h2>
+            <h2 data-en="Step 2: Add Hebrew Text" data-he="שלב 2: הוספת טקסט בעברית">שלב 2: הוספת טקסט בעברית</h2>
             
             <div class="two-columns">
                 <div class="column">
-                    <h3>תצוגה מקדימה</h3>
+                    <h3 data-en="Preview" data-he="תצוגה מקדימה">תצוגה מקדימה</h3>
                     <div id="imagePreviewContainer">
                         <img id="generatedImage" src="" alt="Generated Image">
                         <div id="textOverlay"></div>
@@ -76,56 +87,58 @@
                 </div>
 
                 <div class="column">
-                    <h3>עריכת טקסט</h3>
+                    <h3 data-en="Text Editor" data-he="עריכת טקסט">עריכת טקסט</h3>
                     
                     <div class="form-group">
-                        <label>הצעות לטקסט:</label>
+                        <label data-en="Text Suggestions:" data-he="הצעות לטקסט:">הצעות לטקסט:</label>
                         <button type="button" id="suggestTextsBtn" class="btn-secondary">
-                            💡 הצע טקסטים
+                            <span data-en="💡 Suggest Texts" data-he="💡 הצע טקסטים">💡 הצע טקסטים</span>
                         </button>
                         <div id="textSuggestions"></div>
                     </div>
 
                     <div class="form-group">
-                        <label for="hebrewText">טקסט בעברית:</label>
+                        <label for="hebrewText" data-en="Hebrew Text:" data-he="טקסט בעברית:">טקסט בעברית:</label>
                         <input 
                             type="text" 
-                            id="hebrewText" 
+                            id="hebrewText"
+                            data-placeholder-en="Enter Hebrew text..."
+                            data-placeholder-he="הכנס טקסט בעברית..."
                             placeholder="הכנס טקסט בעברית..."
                         >
                     </div>
 
                     <div class="form-group">
-                        <label for="fontSize">גודל גופן:</label>
+                        <label for="fontSize" data-en="Font Size:" data-he="גודל גופן:">גודל גופן:</label>
                         <input type="range" id="fontSize" min="30" max="150" value="60">
                         <span id="fontSizeValue">60</span>
                     </div>
 
                     <div class="form-group">
-                        <label for="textColor">צבע טקסט:</label>
+                        <label for="textColor" data-en="Text Color:" data-he="צבע טקסט:">צבע טקסט:</label>
                         <input type="color" id="textColor" value="#FFFFFF">
                     </div>
 
                     <div class="form-group">
-                        <label for="strokeColor">צבע מתאר:</label>
+                        <label for="strokeColor" data-en="Outline Color:" data-he="צבע מתאר:">צבע מתאר:</label>
                         <input type="color" id="strokeColor" value="#000000">
                     </div>
 
                     <div class="form-group">
-                        <label>מיקום מוצע:</label>
+                        <label data-en="Suggested Position:" data-he="מיקום מוצע:">מיקום מוצע:</label>
                         <div id="suggestedPositions"></div>
                     </div>
 
                     <button type="button" id="addTextBtn" class="btn-primary">
-                        ➕ הוסף טקסט
+                        <span data-en="➕ Add Text" data-he="➕ הוסף טקסט">➕ הוסף טקסט</span>
                     </button>
 
                     <button type="button" id="downloadBtn" class="btn-success" style="display: none;">
-                        ⬇️ הורד תמונה
+                        <span data-en="⬇️ Download Image" data-he="⬇️ הורד תמונה">⬇️ הורד תמונה</span>
                     </button>
 
                     <button type="button" id="startOverBtn" class="btn-secondary">
-                        🔄 התחל מחדש
+                        <span data-en="🔄 Start Over" data-he="🔄 התחל מחדש">🔄 התחל מחדש</span>
                     </button>
                 </div>
             </div>

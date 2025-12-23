@@ -72,7 +72,8 @@ async def generate_image(
         
         # Get image dimensions for text positioning
         from PIL import Image
-        img = Image.open(output_path)
+        import io
+        img = Image.open(io.BytesIO(image_bytes))
         width, height = img.size
         
         # Suggest text positions
