@@ -48,6 +48,10 @@ async def generate_image(
 ):
     """Generate image using Imagen (Nano Banana)"""
     try:
+        # Check if Imagen is configured
+        if not os.getenv("GOOGLE_PROJECT_ID"):
+            raise HTTPException(status_code=500, detail="GOOGLE_PROJECT_ID not configured")
+        
         job_id = str(uuid.uuid4())
         
         # Generate image
@@ -93,6 +97,9 @@ async def generate_image(
         }
         
     except Exception as e:
+        import traceback
+        error_detail = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+        print(f"ERROR: {error_detail}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/suggest-texts")
@@ -109,6 +116,9 @@ async def suggest_texts(
         }
         
     except Exception as e:
+        import traceback
+        error_detail = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+        print(f"ERROR: {error_detail}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/add-text")
@@ -159,6 +169,9 @@ async def add_text_to_image(
         }
         
     except Exception as e:
+        import traceback
+        error_detail = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+        print(f"ERROR: {error_detail}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/image/{image_id}")

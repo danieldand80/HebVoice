@@ -4,7 +4,9 @@ import os
 import base64
 import json
 import tempfile
+import io
 from typing import Literal
+from PIL import Image as PILImage
 
 # Initialize Vertex AI
 PROJECT_ID = os.getenv("GOOGLE_PROJECT_ID")
@@ -51,8 +53,26 @@ async def generate_image_from_prompt(
     # Get first image
     image = response.images[0]
     
-    # Convert to bytes
-    image_bytes = image._image_bytes
+    # Convert to bytes - Imagen API returns image with save method
+    try:
+        buffer = io.BytesIO()
+        # Use the save method provided by Imagen
+        image.save(location=buffer, mime_type='image/png')
+        buffer.seek(0)
+        image_bytes = buffer.read()
+    except AttributeError:
+        # Fallback: try _image_bytes attribute
+        try:
+            if hasattr(image, '_image_bytes'):
+                image_bytes = image._image_bytes
+            elif hasattr(image, '_pil_image'):
+                buffer = io.BytesIO()
+                image._pil_image.save(buffer, format='PNG')
+                image_bytes = buffer.getvalue()
+            else:
+                raise Exception(f"Unknown image format. Available attributes: {dir(image)}")
+        except Exception as e:
+            raise Exception(f"Failed to convert image to bytes: {str(e)}")
     
     return image_bytes
 
