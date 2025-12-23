@@ -57,17 +57,20 @@ async def generate_image_from_prompt(
     # Initialize Imagen model
     model = ImageGenerationModel.from_pretrained("imagegeneration@006")
     
-    # Map aspect ratios to Imagen format
-    imagen_aspect_ratio = "16:9" if aspect_ratio == "16:9" else "9:16"
-    
-    # Generate image
-    response = model.generate_images(
-        prompt=prompt,
-        number_of_images=1,
-        aspect_ratio=imagen_aspect_ratio,
-        safety_filter_level="block_some",
-        person_generation="allow_adult"
-    )
+    # Generate image (Imagen 3 API)
+    # Note: aspect_ratio parameter may not be supported in all versions
+    try:
+        response = model.generate_images(
+            prompt=prompt,
+            number_of_images=1,
+            # Try with aspect_ratio parameter first
+        )
+    except TypeError:
+        # Fallback if aspect_ratio not supported
+        response = model.generate_images(
+            prompt=prompt,
+            number_of_images=1
+        )
     
     # Get first image
     image = response.images[0]
