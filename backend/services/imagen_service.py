@@ -81,15 +81,12 @@ async def edit_image_with_prompt(
     print(f"[Nano Banana] Editing image (img2img) with prompt: {prompt}")
     print(f"[Nano Banana] Aspect ratio: {aspect_ratio}")
     
-    # Convert image bytes to base64 for API
-    image_data_base64 = base64.b64encode(image_bytes).decode('utf-8')
+    # Convert image bytes to PIL Image (SDK expects PIL Image)
+    pil_image = PILImage.open(io.BytesIO(image_bytes))
     
-    # Create multimodal content with image + text instruction
+    # Create multimodal content with PIL Image + text instruction
     contents = [
-        {
-            'mime_type': 'image/jpeg',
-            'data': image_data_base64
-        },
+        pil_image,  # SDK accepts PIL Image directly
         prompt  # Instruction like "change background to modern shop"
     ]
     
