@@ -21,29 +21,24 @@ Image generation tool with Hebrew text overlay for Israeli e-commerce market usi
 pip install -r requirements.txt
 ```
 
-### 2. Google Cloud Setup
+### 2. Google AI Studio Setup
 
-#### Enable Vertex AI API:
-1. Go to https://console.cloud.google.com
-2. Select your project (LironHebVoice)
-3. APIs & Services → Library
-4. Search: "Vertex AI API" → Enable
-5. Use same `google-credentials.json` from TTS setup
-
-#### Get Project ID:
-1. Google Cloud Console → Dashboard
-2. Copy "Project ID"
-3. Add to `.env` file
+#### Get API Key:
+1. Go to https://aistudio.google.com/
+2. Click "Get API Key"
+3. Create new API key or use existing
+4. Copy the API key
 
 ### 3. Environment Variables
 
 Create `.env` file:
 ```env
-GOOGLE_APPLICATION_CREDENTIALS=google-credentials.json
-GOOGLE_PROJECT_ID=your-project-id-here
-GOOGLE_LOCATION=us-central1
+GOOGLE_API_KEY=your-google-ai-studio-api-key-here
 PORT=8000
 ```
+
+**For Railway deployment:**
+Add `GOOGLE_API_KEY` environment variable in Railway dashboard.
 
 **Optional (for AI text suggestions):**
 ```env

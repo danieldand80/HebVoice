@@ -1,47 +1,18 @@
-from vertexai.generative_models import GenerativeModel, Part, Image as GeminiImage
-import vertexai
+import google.generativeai as genai
 import os
 import base64
-import json
-import tempfile
 import io
 from typing import Literal
 from PIL import Image as PILImage
 
-# Initialize Vertex AI
-PROJECT_ID = os.getenv("GOOGLE_PROJECT_ID")
-LOCATION = os.getenv("GOOGLE_LOCATION", "us-central1")
+# Initialize Google AI Studio API
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-# Handle credentials from env or file (for Railway deployment)
-credentials_json_str = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
-credentials = None
-
-if credentials_json_str:
-    try:
-        # Parse JSON from env variable
-        credentials_dict = json.loads(credentials_json_str)
-        
-        # Create temporary credentials file
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-            json.dump(credentials_dict, f)
-            credentials_path = f.name
-        
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
-        
-        # Also create credentials object directly
-        from google.oauth2 import service_account
-        credentials = service_account.Credentials.from_service_account_info(credentials_dict)
-        
-    except Exception as e:
-        print(f"WARNING: Failed to load credentials from JSON: {e}")
-        # Will try to use default credentials
-
-if PROJECT_ID:
-    vertexai.init(
-        project=PROJECT_ID, 
-        location=LOCATION,
-        credentials=credentials
-    )
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
+    print("[Google AI Studio] API configured successfully")
+else:
+    print("WARNING: GOOGLE_API_KEY not set in environment")
 
 AspectRatio = Literal["9:16", "16:9"]
 
@@ -51,43 +22,33 @@ async def generate_image_from_prompt(
 ) -> bytes:
     """Generate image using Gemini 2.5 Flash Image (Nano Banana) - text2img"""
     
-    if not PROJECT_ID:
-        raise Exception("GOOGLE_PROJECT_ID not set in environment")
+    if not GOOGLE_API_KEY:
+        raise Exception("GOOGLE_API_KEY not set in environment")
     
     # Initialize Gemini 2.5 Flash Image model (Nano Banana)
-    model = GenerativeModel("gemini-2.5-flash-image")
-    
-    # Format aspect ratio for Gemini
-    aspect_ratio_str = aspect_ratio  # "9:16" or "16:9"
-    
-    # Create generation config with correct parameters
-    generation_config = {
-        "responseModalities": ["IMAGE"],  # Correct parameter name (capital letters)
-        "responseMimeType": "image/png"
-    }
+    model = genai.GenerativeModel("gemini-2.5-flash-image")
     
     print(f"[Nano Banana] Generating image (text2img) with prompt: {prompt}")
-    print(f"[Nano Banana] Aspect ratio: {aspect_ratio_str}")
+    print(f"[Nano Banana] Aspect ratio: {aspect_ratio}")
     
     # Generate image from text
     response = model.generate_content(
         prompt,
-        generation_config=generation_config
+        generation_config=genai.GenerationConfig(
+            response_modalities=["IMAGE"],
+            response_mime_type="image/png"
+        )
     )
     
     print(f"[Nano Banana] Response received. Type: {type(response)}")
     
     # Extract image bytes from response
     try:
-        # Gemini returns image in response.candidates[0].content.parts[0].inline_data.data
-        if not response.candidates or len(response.candidates) == 0:
-            raise Exception(f"No candidates in response: {response}")
+        # Check if response has parts
+        if not response.parts or len(response.parts) == 0:
+            raise Exception(f"No parts in response: {response}")
         
-        candidate = response.candidates[0]
-        if not candidate.content.parts or len(candidate.content.parts) == 0:
-            raise Exception(f"No parts in candidate: {candidate}")
-        
-        part = candidate.content.parts[0]
+        part = response.parts[0]
         
         # Get image data (base64 encoded)
         if hasattr(part, 'inline_data') and part.inline_data:
@@ -115,51 +76,41 @@ async def edit_image_with_prompt(
     For example: "change background to modern shop" - keeps product, changes background.
     """
     
-    if not PROJECT_ID:
-        raise Exception("GOOGLE_PROJECT_ID not set in environment")
+    if not GOOGLE_API_KEY:
+        raise Exception("GOOGLE_API_KEY not set in environment")
     
     # Initialize Gemini 2.5 Flash Image model (Nano Banana)
-    model = GenerativeModel("gemini-2.5-flash-image")
-    
-    # Create generation config with correct parameters
-    generation_config = {
-        "responseModalities": ["IMAGE"],  # Correct parameter name
-        "responseMimeType": "image/png"
-    }
+    model = genai.GenerativeModel("gemini-2.5-flash-image")
     
     print(f"[Nano Banana] Editing image (img2img) with prompt: {prompt}")
     print(f"[Nano Banana] Aspect ratio: {aspect_ratio}")
     
-    # Create image part from bytes
-    image_part = Part.from_data(
-        data=image_bytes,
-        mime_type="image/jpeg"
-    )
+    # Convert image bytes to PIL Image
+    pil_image = PILImage.open(io.BytesIO(image_bytes))
     
     # Create multimodal prompt with image + text instruction
     contents = [
-        image_part,
+        pil_image,
         prompt  # Instruction like "change background to modern shop"
     ]
     
     # Generate edited image
     response = model.generate_content(
         contents,
-        generation_config=generation_config
+        generation_config=genai.GenerationConfig(
+            response_modalities=["IMAGE"],
+            response_mime_type="image/png"
+        )
     )
     
     print(f"[Nano Banana] Edit response received. Type: {type(response)}")
     
     # Extract image bytes from response
     try:
-        if not response.candidates or len(response.candidates) == 0:
-            raise Exception(f"No candidates in response: {response}")
+        if not response.parts or len(response.parts) == 0:
+            raise Exception(f"No parts in response: {response}")
         
-        candidate = response.candidates[0]
-        if not candidate.content.parts or len(candidate.content.parts) == 0:
-            raise Exception(f"No parts in candidate: {candidate}")
-        
-        part = candidate.content.parts[0]
+        part = response.parts[0]
         
         # Get image data (base64 encoded)
         if hasattr(part, 'inline_data') and part.inline_data:
