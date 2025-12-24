@@ -57,7 +57,16 @@ async def generate_image(
         # Generate image
         if image:
             # User uploaded image - read bytes directly
+            # Reset file pointer to beginning
+            await image.seek(0)
             uploaded_image_bytes = await image.read()
+            
+            print(f"[DEBUG] Uploaded image bytes size: {len(uploaded_image_bytes)}")
+            print(f"[DEBUG] Image filename: {image.filename}")
+            print(f"[DEBUG] Image content_type: {image.content_type}")
+            
+            if len(uploaded_image_bytes) == 0:
+                raise HTTPException(status_code=400, detail="Uploaded image is empty")
             
             if prompt and prompt.strip():
                 # Edit the uploaded image based on prompt
