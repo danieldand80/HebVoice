@@ -137,20 +137,4 @@ async def edit_image_with_prompt(
         raise Exception(f"Failed to extract edited image from Gemini response: {str(e)}\n\nTraceback: {traceback.format_exc()}")
 
 
-async def enhance_product_image(
-    image_path: str,
-    prompt: str,
-    aspect_ratio: AspectRatio = "16:9"
-) -> bytes:
-    """Enhance product image using Gemini img2img"""
-    
-    if not GOOGLE_API_KEY:
-        raise Exception("GOOGLE_API_KEY not set in environment")
-    
-    # Read image bytes
-    with open(image_path, 'rb') as f:
-        image_bytes = f.read()
-    
-    # Use edit function with prompt
-    return await edit_image_with_prompt(image_bytes, prompt, aspect_ratio)
 

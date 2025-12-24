@@ -8,7 +8,7 @@ import uuid
 from dotenv import load_dotenv
 import base64
 
-from services.imagen_service import generate_image_from_prompt, enhance_product_image
+from services.imagen_service import generate_image_from_prompt, edit_image_with_prompt
 from services.text_overlay_service import add_hebrew_text_to_image, suggest_text_positions
 from services.text_generation_service import generate_hebrew_marketing_text
 
@@ -56,22 +56,15 @@ async def generate_image(
         
         # Generate image
         if image:
-            # User uploaded image - edit it based on prompt
-            image_path = UPLOAD_DIR / f"{job_id}_{image.filename}"
-            with open(image_path, "wb") as f:
-                content = await image.read()
-                f.write(content)
+            # User uploaded image - read bytes directly
+            uploaded_image_bytes = await image.read()
             
             if prompt and prompt.strip():
                 # Edit the uploaded image based on prompt
-                image_bytes = await enhance_product_image(str(image_path), prompt, aspect_ratio)
+                image_bytes = await edit_image_with_prompt(uploaded_image_bytes, prompt, aspect_ratio)
             else:
                 # No prompt - use uploaded image as-is
-                with open(image_path, "rb") as f:
-                    image_bytes = f.read()
-            
-            # Clean up temp file
-            os.remove(image_path)
+                image_bytes = uploaded_image_bytes
         else:
             # No image uploaded - generate new image from prompt
             if not prompt or not prompt.strip():
