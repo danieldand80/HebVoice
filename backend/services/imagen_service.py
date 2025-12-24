@@ -1,4 +1,4 @@
-import google.generativeai as genai
+from google import genai
 import os
 import base64
 import io
@@ -9,10 +9,11 @@ from PIL import Image as PILImage
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 if GOOGLE_API_KEY:
-    genai.configure(api_key=GOOGLE_API_KEY)
+    client = genai.Client(api_key=GOOGLE_API_KEY)
     print("[Google AI Studio] API configured successfully")
 else:
     print("WARNING: GOOGLE_API_KEY not set in environment")
+    client = None
 
 AspectRatio = Literal["9:16", "16:9"]
 
@@ -22,22 +23,20 @@ async def generate_image_from_prompt(
 ) -> bytes:
     """Generate image using Gemini 2.5 Flash Image (Nano Banana) - text2img"""
     
-    if not GOOGLE_API_KEY:
+    if not GOOGLE_API_KEY or not client:
         raise Exception("GOOGLE_API_KEY not set in environment")
-    
-    # Initialize Gemini 2.5 Flash Image model (Nano Banana)
-    model = genai.GenerativeModel("gemini-2.5-flash-image")
     
     print(f"[Nano Banana] Generating image (text2img) with prompt: {prompt}")
     print(f"[Nano Banana] Aspect ratio: {aspect_ratio}")
     
-    # Generate image from text
-    response = model.generate_content(
-        prompt,
-        generation_config=genai.GenerationConfig(
-            response_modalities=["IMAGE"],
-            response_mime_type="image/png"
-        )
+    # Generate image from text using new SDK
+    response = client.models.generate_content(
+        model='gemini-2.5-flash-image',
+        contents=prompt,
+        config={
+            'response_modalities': ['IMAGE'],
+            'response_mime_type': 'image/png'
+        }
     )
     
     print(f"[Nano Banana] Response received. Type: {type(response)}")
@@ -45,7 +44,7 @@ async def generate_image_from_prompt(
     # Extract image bytes from response
     try:
         # Check if response has parts
-        if not response.parts or len(response.parts) == 0:
+        if not hasattr(response, 'parts') or not response.parts or len(response.parts) == 0:
             raise Exception(f"No parts in response: {response}")
         
         part = response.parts[0]
@@ -76,38 +75,39 @@ async def edit_image_with_prompt(
     For example: "change background to modern shop" - keeps product, changes background.
     """
     
-    if not GOOGLE_API_KEY:
+    if not GOOGLE_API_KEY or not client:
         raise Exception("GOOGLE_API_KEY not set in environment")
-    
-    # Initialize Gemini 2.5 Flash Image model (Nano Banana)
-    model = genai.GenerativeModel("gemini-2.5-flash-image")
     
     print(f"[Nano Banana] Editing image (img2img) with prompt: {prompt}")
     print(f"[Nano Banana] Aspect ratio: {aspect_ratio}")
     
-    # Convert image bytes to PIL Image
-    pil_image = PILImage.open(io.BytesIO(image_bytes))
+    # Convert image bytes to base64 for API
+    image_data_base64 = base64.b64encode(image_bytes).decode('utf-8')
     
-    # Create multimodal prompt with image + text instruction
+    # Create multimodal content with image + text instruction
     contents = [
-        pil_image,
+        {
+            'mime_type': 'image/jpeg',
+            'data': image_data_base64
+        },
         prompt  # Instruction like "change background to modern shop"
     ]
     
-    # Generate edited image
-    response = model.generate_content(
-        contents,
-        generation_config=genai.GenerationConfig(
-            response_modalities=["IMAGE"],
-            response_mime_type="image/png"
-        )
+    # Generate edited image using new SDK
+    response = client.models.generate_content(
+        model='gemini-2.5-flash-image',
+        contents=contents,
+        config={
+            'response_modalities': ['IMAGE'],
+            'response_mime_type': 'image/png'
+        }
     )
     
     print(f"[Nano Banana] Edit response received. Type: {type(response)}")
     
     # Extract image bytes from response
     try:
-        if not response.parts or len(response.parts) == 0:
+        if not hasattr(response, 'parts') or not response.parts or len(response.parts) == 0:
             raise Exception(f"No parts in response: {response}")
         
         part = response.parts[0]
@@ -132,10 +132,10 @@ async def enhance_product_image(
     prompt: str,
     aspect_ratio: AspectRatio = "16:9"
 ) -> bytes:
-    """Enhance product image using Imagen edit capabilities"""
+    """Enhance product image using Gemini img2img"""
     
-    if not PROJECT_ID:
-        raise Exception("GOOGLE_PROJECT_ID not set in environment")
+    if not GOOGLE_API_KEY:
+        raise Exception("GOOGLE_API_KEY not set in environment")
     
     # Read image bytes
     with open(image_path, 'rb') as f:
