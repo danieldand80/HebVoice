@@ -1,4 +1,4 @@
-from vertexai.preview.vision_models import ImageGenerationModel
+from vertexai.generative_models import GenerativeModel, Part, Image as GeminiImage
 import vertexai
 import os
 import base64
@@ -49,68 +49,60 @@ async def generate_image_from_prompt(
     prompt: str,
     aspect_ratio: AspectRatio = "16:9"
 ) -> bytes:
-    """Generate image using Google Imagen (Nano Banana)"""
+    """Generate image using Gemini 2.5 Flash Image (Nano Banana) - text2img"""
     
     if not PROJECT_ID:
         raise Exception("GOOGLE_PROJECT_ID not set in environment")
     
-    # Initialize Imagen model
-    model = ImageGenerationModel.from_pretrained("imagegeneration@006")
+    # Initialize Gemini 2.5 Flash Image model (Nano Banana)
+    model = GenerativeModel("gemini-2.5-flash-preview")
     
-    # Calculate target size based on aspect ratio
-    if aspect_ratio == "9:16":
-        # Vertical format (e.g., 1080x1920)
-        width, height = 1024, 1792
-    else:
-        # Horizontal format 16:9 (e.g., 1920x1080)
-        width, height = 1792, 1024
+    # Format aspect ratio for Gemini
+    aspect_ratio_str = aspect_ratio  # "9:16" or "16:9"
     
-    # Generate image
-    print(f"Generating image with prompt: {prompt}")
-    response = model.generate_images(
-        prompt=prompt,
-        number_of_images=1
+    # Create generation config with aspect ratio
+    generation_config = {
+        "response_modalities": ["image"],
+        "response_mime_type": "image/png",
+        "aspect_ratio": aspect_ratio_str
+    }
+    
+    print(f"[Nano Banana] Generating image (text2img) with prompt: {prompt}")
+    print(f"[Nano Banana] Aspect ratio: {aspect_ratio_str}")
+    
+    # Generate image from text
+    response = model.generate_content(
+        prompt,
+        generation_config=generation_config
     )
     
-    print(f"Response received. Type: {type(response)}")
-    print(f"Response attributes: {dir(response)}")
-    print(f"Number of images: {len(response.images) if hasattr(response, 'images') else 'N/A'}")
+    print(f"[Nano Banana] Response received. Type: {type(response)}")
     
-    # Check if images were generated
-    if not response.images or len(response.images) == 0:
-        raise Exception(f"No images generated. Response: {response}")
-    
-    # Get first image
-    image = response.images[0]
-    print(f"Image type: {type(image)}, Image attributes: {dir(image)}")
-    
-    # Convert to bytes - use _pil_image attribute
+    # Extract image bytes from response
     try:
-        # Imagen returns object with _pil_image attribute
-        if hasattr(image, '_pil_image'):
-            pil_image = image._pil_image
-            buffer = io.BytesIO()
-            pil_image.save(buffer, format='PNG')
-            buffer.seek(0)
-            image_bytes = buffer.getvalue()
-        elif hasattr(image, '_image_bytes'):
-            # Direct bytes attribute
-            image_bytes = image._image_bytes
-        else:
-            # Last resort: save to temp file and read
-            import tempfile
-            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
-                image.save(location=tmp.name)
-                tmp.seek(0)
-                with open(tmp.name, 'rb') as f:
-                    image_bytes = f.read()
-                os.unlink(tmp.name)
+        # Gemini returns image in response.candidates[0].content.parts[0].inline_data.data
+        if not response.candidates or len(response.candidates) == 0:
+            raise Exception(f"No candidates in response: {response}")
         
-        return image_bytes
+        candidate = response.candidates[0]
+        if not candidate.content.parts or len(candidate.content.parts) == 0:
+            raise Exception(f"No parts in candidate: {candidate}")
+        
+        part = candidate.content.parts[0]
+        
+        # Get image data (base64 encoded)
+        if hasattr(part, 'inline_data') and part.inline_data:
+            image_data_base64 = part.inline_data.data
+            # Decode base64 to bytes
+            image_bytes = base64.b64decode(image_data_base64)
+            print(f"[Nano Banana] Image generated successfully! Size: {len(image_bytes)} bytes")
+            return image_bytes
+        else:
+            raise Exception(f"No inline_data in part: {part}")
         
     except Exception as e:
         import traceback
-        raise Exception(f"Failed to convert Imagen image to bytes: {str(e)}\n\nTraceback: {traceback.format_exc()}\n\nAvailable attributes: {dir(image)}")
+        raise Exception(f"Failed to extract image from Gemini response: {str(e)}\n\nTraceback: {traceback.format_exc()}")
 
 
 async def edit_image_with_prompt(
@@ -118,24 +110,78 @@ async def edit_image_with_prompt(
     prompt: str,
     aspect_ratio: AspectRatio = "16:9"
 ) -> bytes:
-    """Edit existing image using Imagen based on text prompt
+    """Edit existing image using Gemini 2.5 Flash Image (Nano Banana) - img2img
     
-    Note: For MVP, this generates a new image based on enhanced prompt.
-    Full image-to-image editing with mask support will be added later.
+    This function takes an existing image and modifies it based on text prompt.
+    For example: "change background to modern shop" - keeps product, changes background.
     """
     
     if not PROJECT_ID:
         raise Exception("GOOGLE_PROJECT_ID not set in environment")
     
-    print(f"Editing image with prompt: {prompt}")
+    # Initialize Gemini 2.5 Flash Image model (Nano Banana)
+    model = GenerativeModel("gemini-2.5-flash-preview")
     
-    # For MVP: Generate new image with enhanced prompt
-    # TODO: Add proper image-to-image editing with mask when implementing advanced features
-    enhanced_prompt = f"Professional product photography with {prompt}, high quality, commercial style, clean and modern"
+    # Format aspect ratio for Gemini
+    aspect_ratio_str = aspect_ratio  # "9:16" or "16:9"
     
-    print(f"Using enhanced prompt for generation: {enhanced_prompt}")
+    # Create generation config
+    generation_config = {
+        "response_modalities": ["image"],
+        "response_mime_type": "image/png",
+        "aspect_ratio": aspect_ratio_str
+    }
     
-    return await generate_image_from_prompt(enhanced_prompt, aspect_ratio)
+    print(f"[Nano Banana] Editing image (img2img) with prompt: {prompt}")
+    print(f"[Nano Banana] Aspect ratio: {aspect_ratio_str}")
+    
+    # Convert image bytes to base64 for Gemini
+    image_data_base64 = base64.b64encode(image_bytes).decode('utf-8')
+    
+    # Create image part
+    image_part = Part.from_data(
+        data=base64.b64decode(image_data_base64),
+        mime_type="image/jpeg"  # or "image/png"
+    )
+    
+    # Create multimodal prompt with image + text instruction
+    contents = [
+        image_part,
+        prompt  # Instruction like "change background to modern shop"
+    ]
+    
+    # Generate edited image
+    response = model.generate_content(
+        contents,
+        generation_config=generation_config
+    )
+    
+    print(f"[Nano Banana] Edit response received. Type: {type(response)}")
+    
+    # Extract image bytes from response
+    try:
+        if not response.candidates or len(response.candidates) == 0:
+            raise Exception(f"No candidates in response: {response}")
+        
+        candidate = response.candidates[0]
+        if not candidate.content.parts or len(candidate.content.parts) == 0:
+            raise Exception(f"No parts in candidate: {candidate}")
+        
+        part = candidate.content.parts[0]
+        
+        # Get image data (base64 encoded)
+        if hasattr(part, 'inline_data') and part.inline_data:
+            image_data_base64 = part.inline_data.data
+            # Decode base64 to bytes
+            image_bytes = base64.b64decode(image_data_base64)
+            print(f"[Nano Banana] Image edited successfully! Size: {len(image_bytes)} bytes")
+            return image_bytes
+        else:
+            raise Exception(f"No inline_data in part: {part}")
+        
+    except Exception as e:
+        import traceback
+        raise Exception(f"Failed to extract edited image from Gemini response: {str(e)}\n\nTraceback: {traceback.format_exc()}")
 
 
 async def enhance_product_image(

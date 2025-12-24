@@ -1,14 +1,15 @@
 # Hebrew Image Generator - מחולל תמונות בעברית
 
-Image generation tool with Hebrew text overlay for Israeli e-commerce market using Google Imagen (Nano Banana).
+Image generation tool with Hebrew text overlay for Israeli e-commerce market using **Gemini 2.5 Flash Image (Nano Banana)**.
 
 ## Features
 
-- Generate product images with Google Imagen (Nano Banana)
+- 🎨 **text2img** - Generate product images from text descriptions
+- 🖼️ **img2img** - Edit existing photos (change backgrounds, modify images)
 - Upload product photo OR write text prompt
 - Choose format: 16:9 (horizontal) or 9:16 (vertical)
 - Add Hebrew text overlay with visual editor
-- AI-suggested Hebrew marketing texts
+- AI-suggested Hebrew marketing texts (coming soon)
 - Smart text positioning
 - Export high-quality images
 
@@ -68,39 +69,52 @@ Visit: http://localhost:8000
 ## Tech Stack
 
 - **Backend:** FastAPI (Python)
-- **Image Generation:** Google Imagen 3 (Nano Banana)
+- **Image Generation:** Gemini 2.5 Flash Image (Nano Banana)
 - **Text Overlay:** Pillow (PIL)
 - **Text Generation:** GPT-4 (optional)
 - **Frontend:** Vanilla HTML/CSS/JS
+- **Deployment:** Railway
 
 ## Costs (Estimated)
 
-### Google Imagen (Nano Banana):
-- 1024x1024 image: ~$0.02-0.04
-- Higher resolution: ~$0.08
+### Gemini 2.5 Flash Image (Nano Banana):
+- ~$0.039 per image (1290 tokens/image)
+- Supports both text2img and img2img modes
 
 ### Example:
-- 1,000 images/month: $20-40
-- 10,000 images/month: $200-400
+- 1,000 images/month: ~$39
+- 10,000 images/month: ~$390
 
 Much cheaper than video generation!
 
 ## Workflow
 
+### Mode 1: Generate from text (text2img)
 ```
-1. User uploads product photo OR writes prompt
+1. Write prompt: "red sneakers on white background"
     ↓
 2. Select format (16:9 or 9:16)
     ↓
-3. Imagen generates clean product image
+3. Gemini 2.5 Flash generates image
     ↓
-4. AI suggests Hebrew marketing texts (optional)
+4. Add Hebrew text overlay
     ↓
-5. User picks/edits Hebrew text
+5. Export final image
+```
+
+### Mode 2: Edit existing photo (img2img)
+```
+1. Upload product photo (e.g., sneakers)
     ↓
-6. Visual editor: position text on image
+2. Write edit instruction: "change background to modern shop"
     ↓
-7. Export final image with Hebrew text
+3. Select format (16:9 or 9:16)
+    ↓
+4. Gemini 2.5 Flash edits image (keeps product, changes background)
+    ↓
+5. Add Hebrew text overlay
+    ↓
+6. Export final image
 ```
 
 ## Features TODO
