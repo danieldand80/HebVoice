@@ -42,10 +42,18 @@ async def generate_image_from_prompt(
     
     # Extract image using as_image() method from documentation
     try:
-        if not hasattr(response, 'parts') or not response.parts or len(response.parts) == 0:
-            raise Exception(f"No parts in response: {response}")
+        # Access parts through candidates[0].content.parts
+        if not hasattr(response, 'candidates') or not response.candidates:
+            raise Exception(f"No candidates in response")
         
-        for part in response.parts:
+        candidate = response.candidates[0]
+        if not hasattr(candidate, 'content') or not candidate.content:
+            raise Exception(f"No content in candidate")
+        
+        if not hasattr(candidate.content, 'parts') or not candidate.content.parts:
+            raise Exception(f"No parts in content")
+        
+        for part in candidate.content.parts:
             if part.inline_data:
                 # Use as_image() method from official documentation
                 pil_image = part.as_image()
@@ -111,10 +119,18 @@ async def edit_image_with_prompt(
     
     # Extract image using as_image() method from documentation
     try:
-        if not hasattr(response, 'parts') or not response.parts or len(response.parts) == 0:
-            raise Exception(f"No parts in response: {response}")
+        # Access parts through candidates[0].content.parts
+        if not hasattr(response, 'candidates') or not response.candidates:
+            raise Exception(f"No candidates in response")
         
-        for part in response.parts:
+        candidate = response.candidates[0]
+        if not hasattr(candidate, 'content') or not candidate.content:
+            raise Exception(f"No content in candidate")
+        
+        if not hasattr(candidate.content, 'parts') or not candidate.content.parts:
+            raise Exception(f"No parts in content")
+        
+        for part in candidate.content.parts:
             if part.inline_data:
                 # Use as_image() method from official documentation
                 edited_pil_image = part.as_image()
