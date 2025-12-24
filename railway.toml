@@ -1,17 +1,7 @@
 [build]
-builder = "nixpacks"
+builder = "NIXPACKS"
 
-[build.nixpacksPlan.phases.setup]
-nixPkgs = ["python311"]
-
-[build.nixpacksPlan.phases.install]
-cmds = ["pip install -r requirements.txt"]
-
-[build.nixpacksPlan.phases.build]
-cmds = []
-
-[build.nixpacksPlan.start]
-cmd = "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
-
-
-
+[deploy]
+startCommand = "cd backend && python main.py"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

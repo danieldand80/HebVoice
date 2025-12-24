@@ -123,14 +123,15 @@ Much cheaper than video generation!
 
 ## Troubleshooting
 
-### Error: "GOOGLE_PROJECT_ID not set"
-- Check `.env` file has `GOOGLE_PROJECT_ID=your-actual-project-id`
-- Copy Project ID from Google Cloud Console dashboard
+### Error: "GOOGLE_API_KEY not configured"
+- Check `.env` file has `GOOGLE_API_KEY=your-actual-api-key`
+- Get your API key from https://aistudio.google.com/app/apikey
+- Make sure the API key is valid and has no extra spaces
 
-### Error: "Vertex AI API not enabled"
-- Go to Google Cloud Console
-- Enable Vertex AI API
-- Wait 2-3 minutes for activation
+### Error: "Image bytes are empty"
+- Make sure you're uploading a valid image file (JPG, PNG, WebP)
+- Check that the image file size is not too large (< 10MB recommended)
+- Try a different image file
 
 ### Hebrew text not displaying
 - System needs Hebrew font support

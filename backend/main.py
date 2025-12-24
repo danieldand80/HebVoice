@@ -48,32 +48,50 @@ async def generate_image(
 ):
     """Generate image using Imagen (Nano Banana)"""
     try:
-        # Check if Imagen is configured
-        if not os.getenv("GOOGLE_PROJECT_ID"):
-            raise HTTPException(status_code=500, detail="GOOGLE_PROJECT_ID not configured")
+        # Check if Google AI API is configured
+        if not os.getenv("GOOGLE_API_KEY"):
+            raise HTTPException(status_code=500, detail="GOOGLE_API_KEY not configured")
         
         job_id = str(uuid.uuid4())
         
         # Generate image
         if image:
             # User uploaded image - read bytes directly
-            # Reset file pointer to beginning
-            await image.seek(0)
-            uploaded_image_bytes = await image.read()
-            
-            print(f"[DEBUG] Uploaded image bytes size: {len(uploaded_image_bytes)}")
-            print(f"[DEBUG] Image filename: {image.filename}")
-            print(f"[DEBUG] Image content_type: {image.content_type}")
-            
-            if len(uploaded_image_bytes) == 0:
-                raise HTTPException(status_code=400, detail="Uploaded image is empty")
-            
-            if prompt and prompt.strip():
-                # Edit the uploaded image based on prompt
-                image_bytes = await edit_image_with_prompt(uploaded_image_bytes, prompt, aspect_ratio)
-            else:
-                # No prompt - use uploaded image as-is
-                image_bytes = uploaded_image_bytes
+            try:
+                # Reset file pointer to beginning
+                await image.seek(0)
+                uploaded_image_bytes = await image.read()
+                
+                print(f"[DEBUG] Uploaded image bytes size: {len(uploaded_image_bytes)}")
+                print(f"[DEBUG] Image filename: {image.filename}")
+                print(f"[DEBUG] Image content_type: {image.content_type}")
+                
+                if len(uploaded_image_bytes) == 0:
+                    raise HTTPException(status_code=400, detail="Uploaded image is empty")
+                
+                # Validate it's actually an image
+                from PIL import Image as PILImageValidation
+                import io as io_validation
+                try:
+                    test_img = PILImageValidation.open(io_validation.BytesIO(uploaded_image_bytes))
+                    print(f"[DEBUG] Image validated: {test_img.size}, mode: {test_img.mode}")
+                except Exception as e:
+                    raise HTTPException(status_code=400, detail=f"Invalid image file: {str(e)}")
+                
+                if prompt and prompt.strip():
+                    # Edit the uploaded image based on prompt
+                    print(f"[DEBUG] Editing image with prompt: {prompt[:50]}...")
+                    image_bytes = await edit_image_with_prompt(uploaded_image_bytes, prompt, aspect_ratio)
+                else:
+                    # No prompt - use uploaded image as-is
+                    print(f"[DEBUG] Using uploaded image as-is (no prompt)")
+                    image_bytes = uploaded_image_bytes
+            except HTTPException:
+                raise
+            except Exception as e:
+                import traceback
+                print(f"[ERROR] Failed to process uploaded image: {str(e)}\n{traceback.format_exc()}")
+                raise HTTPException(status_code=400, detail=f"Failed to process uploaded image: {str(e)}")
         else:
             # No image uploaded - generate new image from prompt
             if not prompt or not prompt.strip():
@@ -227,5 +245,7 @@ async def health():
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
+    print(f"Starting server on port {port}...")
+    print(f"GOOGLE_API_KEY configured: {'Yes' if os.getenv('GOOGLE_API_KEY') else 'No'}")
     uvicorn.run(app, host="0.0.0.0", port=port)
 

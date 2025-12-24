@@ -84,10 +84,14 @@ async def edit_image_with_prompt(
     print(f"[Nano Banana] Aspect ratio: {aspect_ratio}")
     print(f"[Nano Banana] Image bytes size: {len(image_bytes)}")
     
+    if len(image_bytes) == 0:
+        raise Exception("Image bytes are empty! Cannot edit empty image.")
+    
     # Convert image bytes to PIL Image (according to documentation)
-    image_buffer = io.BytesIO(image_bytes)
-    image_buffer.seek(0)
-    pil_image = PILImage.open(image_buffer)
+    try:
+        pil_image = PILImage.open(io.BytesIO(image_bytes))
+    except Exception as e:
+        raise Exception(f"Failed to open image with PIL: {str(e)}")
     
     print(f"[Nano Banana] PIL Image loaded: {pil_image.size}, mode: {pil_image.mode}")
     
