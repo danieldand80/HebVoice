@@ -55,16 +55,15 @@ async def generate_image_from_prompt(
         raise Exception("GOOGLE_PROJECT_ID not set in environment")
     
     # Initialize Gemini 2.5 Flash Image model (Nano Banana)
-    model = GenerativeModel("gemini-2.5-flash-preview")
+    model = GenerativeModel("gemini-2.5-flash-image")
     
     # Format aspect ratio for Gemini
     aspect_ratio_str = aspect_ratio  # "9:16" or "16:9"
     
-    # Create generation config with aspect ratio
+    # Create generation config with correct parameters
     generation_config = {
-        "response_modalities": ["image"],
-        "response_mime_type": "image/png",
-        "aspect_ratio": aspect_ratio_str
+        "responseModalities": ["IMAGE"],  # Correct parameter name (capital letters)
+        "responseMimeType": "image/png"
     }
     
     print(f"[Nano Banana] Generating image (text2img) with prompt: {prompt}")
@@ -120,28 +119,21 @@ async def edit_image_with_prompt(
         raise Exception("GOOGLE_PROJECT_ID not set in environment")
     
     # Initialize Gemini 2.5 Flash Image model (Nano Banana)
-    model = GenerativeModel("gemini-2.5-flash-preview")
+    model = GenerativeModel("gemini-2.5-flash-image")
     
-    # Format aspect ratio for Gemini
-    aspect_ratio_str = aspect_ratio  # "9:16" or "16:9"
-    
-    # Create generation config
+    # Create generation config with correct parameters
     generation_config = {
-        "response_modalities": ["image"],
-        "response_mime_type": "image/png",
-        "aspect_ratio": aspect_ratio_str
+        "responseModalities": ["IMAGE"],  # Correct parameter name
+        "responseMimeType": "image/png"
     }
     
     print(f"[Nano Banana] Editing image (img2img) with prompt: {prompt}")
-    print(f"[Nano Banana] Aspect ratio: {aspect_ratio_str}")
+    print(f"[Nano Banana] Aspect ratio: {aspect_ratio}")
     
-    # Convert image bytes to base64 for Gemini
-    image_data_base64 = base64.b64encode(image_bytes).decode('utf-8')
-    
-    # Create image part
+    # Create image part from bytes
     image_part = Part.from_data(
-        data=base64.b64decode(image_data_base64),
-        mime_type="image/jpeg"  # or "image/png"
+        data=image_bytes,
+        mime_type="image/jpeg"
     )
     
     # Create multimodal prompt with image + text instruction
