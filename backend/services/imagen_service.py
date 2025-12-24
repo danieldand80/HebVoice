@@ -34,10 +34,7 @@ async def generate_image_from_prompt(
         model='gemini-2.5-flash-image',
         contents=prompt,
         config=types.GenerateContentConfig(
-            response_modalities=['IMAGE'],
-            image_config=types.ImageConfig(
-                aspect_ratio=aspect_ratio
-            )
+            response_modalities=['IMAGE']
         )
     )
     
@@ -102,10 +99,7 @@ async def edit_image_with_prompt(
         model='gemini-2.5-flash-image',
         contents=contents,
         config=types.GenerateContentConfig(
-            response_modalities=['IMAGE'],
-            image_config=types.ImageConfig(
-                aspect_ratio=aspect_ratio
-            )
+            response_modalities=['IMAGE']
         )
     )
     
