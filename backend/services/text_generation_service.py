@@ -57,3 +57,5 @@ Return only the Hebrew texts, one per line."""
             "קנה עכשיו"
         ]
 
+
+
