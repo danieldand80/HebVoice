@@ -15,7 +15,7 @@ else:
     print("WARNING: GOOGLE_API_KEY not set in environment")
     client = None
 
-AspectRatio = Literal["9:16", "16:9"]
+AspectRatio = Literal["9:16", "16:9", "1:1"]
 
 async def generate_image_from_prompt(
     prompt: str,
@@ -29,8 +29,13 @@ async def generate_image_from_prompt(
     print(f"[Nano Banana] Generating image (text2img) with prompt: {prompt}")
     print(f"[Nano Banana] Aspect ratio: {aspect_ratio}")
     
-    # Add aspect ratio instruction to prompt
-    enhanced_prompt = f"{prompt}, aspect ratio {aspect_ratio}"
+    # Add aspect ratio instruction to prompt with specific dimensions
+    aspect_instructions = {
+        "16:9": "horizontal landscape orientation 16:9 aspect ratio, 1920x1080 dimensions",
+        "9:16": "vertical portrait orientation 9:16 aspect ratio, 1080x1920 dimensions",
+        "1:1": "square 1:1 aspect ratio, 1024x1024 dimensions"
+    }
+    enhanced_prompt = f"{prompt}, {aspect_instructions.get(aspect_ratio, aspect_instructions['16:9'])}"
     
     # Generate image from text using official SDK method
     response = client.models.generate_content(
@@ -100,8 +105,13 @@ async def edit_image_with_prompt(
     
     print(f"[Nano Banana] PIL Image loaded: {pil_image.size}, mode: {pil_image.mode}")
     
-    # Add aspect ratio instruction to prompt
-    enhanced_prompt = f"{prompt}, aspect ratio {aspect_ratio}"
+    # Add aspect ratio instruction to prompt with specific dimensions
+    aspect_instructions = {
+        "16:9": "horizontal landscape orientation 16:9 aspect ratio, 1920x1080 dimensions",
+        "9:16": "vertical portrait orientation 9:16 aspect ratio, 1080x1920 dimensions",
+        "1:1": "square 1:1 aspect ratio, 1024x1024 dimensions"
+    }
+    enhanced_prompt = f"{prompt}, {aspect_instructions.get(aspect_ratio, aspect_instructions['16:9'])}"
     
     # Create multimodal content: [prompt, image] as per documentation
     contents = [enhanced_prompt, pil_image]
