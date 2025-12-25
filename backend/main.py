@@ -8,7 +8,7 @@ import uuid
 from dotenv import load_dotenv
 import base64
 
-from services.imagen_service import generate_image_from_prompt, edit_image_with_prompt
+from services.imagen_service_v2 import generate_image_from_prompt, edit_image_with_prompt
 from services.text_overlay_service import add_hebrew_text_to_image, suggest_text_positions
 from services.text_generation_service import generate_hebrew_marketing_text
 
