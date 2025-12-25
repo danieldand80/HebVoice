@@ -199,35 +199,24 @@ async def generate_image_with_old_api(
 
 async def generate_image_from_prompt(
     prompt: str,
-    aspect_ratio: AspectRatio = "16:9",
-    prefer_new_api: bool = True
+    aspect_ratio: AspectRatio = "16:9"
 ) -> bytes:
     """
-    Generate image with aspect_ratio support.
+    Generate image with NATIVE aspect_ratio support using NEW API ONLY.
     
-    Strategy:
-    1. Try new generate_images API (native aspect_ratio support)
-    2. If fails, fallback to old generate_content API (crop + resize)
+    Uses generate_images API with native aspectRatio parameter.
+    No fallback, no resize.
     
     Args:
         prompt: Text description of the image
         aspect_ratio: Target aspect ratio ("16:9", "9:16", "1:1")
-        prefer_new_api: If True, try new API first. If False, use old API directly.
     
     Returns:
         Image bytes (PNG format)
     """
     
-    if prefer_new_api:
-        # Try new API first
-        try:
-            return await generate_image_with_new_api(prompt, aspect_ratio)
-        except Exception as e:
-            print(f"[WARNING] New API failed: {str(e)}")
-            print(f"[WARNING] Falling back to old API with crop/resize")
-    
-    # Use old API (with crop + resize)
-    return await generate_image_with_old_api(prompt, aspect_ratio)
+    # ONLY new API - no fallback
+    return await generate_image_with_new_api(prompt, aspect_ratio)
 
 
 async def edit_image_with_prompt(
@@ -236,18 +225,18 @@ async def edit_image_with_prompt(
     aspect_ratio: AspectRatio = "16:9"
 ) -> bytes:
     """
-    Edit existing image using gemini-2.5-flash-image (img2img).
+    Edit existing image using NEW edit_image API with NATIVE aspect_ratio support.
     
-    Note: Currently only supports old API.
-    New generate_images API might have edit_image method - needs testing.
+    Uses edit_image API with native aspectRatio parameter.
+    No resize, no crop.
     """
     
     if not GOOGLE_API_KEY or not client:
         raise Exception("GOOGLE_API_KEY not set in environment")
     
-    print(f"[Img2Img] Editing image with prompt: {prompt}")
-    print(f"[Img2Img] Aspect ratio: {aspect_ratio}")
-    print(f"[Img2Img] Image bytes size: {len(image_bytes)}")
+    print(f"[New API Edit] Editing image with prompt: {prompt}")
+    print(f"[New API Edit] Aspect ratio: {aspect_ratio}")
+    print(f"[New API Edit] Image bytes size: {len(image_bytes)}")
     
     if len(image_bytes) == 0:
         raise Exception("Image bytes are empty!")
@@ -255,65 +244,47 @@ async def edit_image_with_prompt(
     # Convert to PIL Image
     try:
         pil_image = PILImage.open(io.BytesIO(image_bytes))
+        print(f"[New API Edit] Input image: {pil_image.size}, mode: {pil_image.mode}")
     except Exception as e:
         raise Exception(f"Failed to open image: {str(e)}")
     
-    print(f"[Img2Img] PIL Image loaded: {pil_image.size}, mode: {pil_image.mode}")
-    
-    # Add aspect ratio hint to prompt
-    aspect_hints = {
-        "16:9": "maintain horizontal widescreen composition",
-        "9:16": "maintain vertical portrait composition",
-        "1:1": "maintain square composition"
-    }
-    
-    enhanced_prompt = f"{prompt}, {aspect_hints[aspect_ratio]}"
-    
-    # Create multimodal content
-    contents = [enhanced_prompt, pil_image]
-    
-    # Generate edited image
-    response = client.models.generate_content(
-        model='gemini-2.5-flash-image',
-        contents=contents,
-        config=types.GenerateContentConfig(
-            response_modalities=['IMAGE']
-        )
-    )
-    
-    print(f"[Img2Img] Response received")
-    
-    # Extract image
     try:
-        if not hasattr(response, 'candidates') or not response.candidates:
-            raise Exception(f"No candidates in response")
+        # Use NEW edit_image API with reference image
+        response = client.models.edit_image(
+            model="imagen-3.0-generate-001",
+            prompt=prompt,
+            reference_images=[
+                types.RawReferenceImage(
+                    reference_image=pil_image,
+                    reference_type="RAW"
+                )
+            ],
+            config=types.EditImageConfig(
+                aspectRatio=aspect_ratio,
+                numberOfImages=1,
+                editMode="EDIT_MODE_OUTPAINT"  # or "EDIT_MODE_INPAINT"
+            )
+        )
         
-        candidate = response.candidates[0]
+        print(f"[New API Edit] Response received")
         
-        if hasattr(candidate, 'finish_reason'):
-            print(f"[DEBUG] finish_reason: {candidate.finish_reason}")
+        # Extract edited image
+        if not response.generated_images or len(response.generated_images) == 0:
+            raise Exception("No images generated in response")
         
-        if not hasattr(candidate, 'content') or not candidate.content:
-            error_msg = f"No content in candidate. Finish reason: {getattr(candidate, 'finish_reason', 'unknown')}"
-            if hasattr(candidate, 'safety_ratings'):
-                error_msg += f"\nSafety ratings: {candidate.safety_ratings}"
-            raise Exception(error_msg)
+        # Get first image
+        generated_image = response.generated_images[0]
+        edited_pil_image = generated_image.image.as_image()
         
-        if not hasattr(candidate.content, 'parts') or not candidate.content.parts:
-            raise Exception(f"No parts in content")
+        print(f"[New API Edit] Image edited! Size: {edited_pil_image.size}")
         
-        for part in candidate.content.parts:
-            if part.inline_data:
-                image_bytes = part.inline_data.data
-                print(f"[Img2Img] Image edited! Size: {len(image_bytes)} bytes")
-                
-                # Apply aspect ratio through post-processing
-                image_bytes = resize_to_aspect_ratio(image_bytes, aspect_ratio)
-                return image_bytes
-        
-        raise Exception(f"No image found in response parts")
+        # Convert to bytes
+        buffer = io.BytesIO()
+        edited_pil_image.save(buffer, format='PNG')
+        buffer.seek(0)
+        return buffer.getvalue()
         
     except Exception as e:
-        import traceback
-        raise Exception(f"Failed to extract edited image: {str(e)}\n\nTraceback: {traceback.format_exc()}")
+        print(f"[New API Edit] Failed: {str(e)}")
+        raise
 
