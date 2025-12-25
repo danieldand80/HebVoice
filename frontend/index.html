@@ -62,7 +62,10 @@
                         name="image" 
                         accept="image/*"
                     >
-                    <div id="imagePreview"></div>
+                    <div id="imagePreviewWrapper" style="position: relative; display: inline-block;">
+                        <div id="imagePreview"></div>
+                        <button type="button" id="removeImageBtn" class="remove-image-btn" style="display: none;" data-en="✕ Remove" data-he="✕ הסר">✕ הסר</button>
+                    </div>
                     <small data-en="Upload image to edit it, or leave empty to generate from scratch" data-he="העלה תמונה כדי לערוך אותה, או השאר ריק כדי ליצור מאפס">העלה תמונה כדי לערוך אותה, או השאר ריק כדי ליצור מאפס</small>
                 </div>
 

@@ -29,10 +29,13 @@ async def generate_image_from_prompt(
     print(f"[Nano Banana] Generating image (text2img) with prompt: {prompt}")
     print(f"[Nano Banana] Aspect ratio: {aspect_ratio}")
     
+    # Add aspect ratio instruction to prompt
+    enhanced_prompt = f"{prompt}, aspect ratio {aspect_ratio}"
+    
     # Generate image from text using official SDK method
     response = client.models.generate_content(
         model='gemini-2.5-flash-image',
-        contents=prompt,
+        contents=enhanced_prompt,
         config=types.GenerateContentConfig(
             response_modalities=['IMAGE']
         )
@@ -97,8 +100,11 @@ async def edit_image_with_prompt(
     
     print(f"[Nano Banana] PIL Image loaded: {pil_image.size}, mode: {pil_image.mode}")
     
+    # Add aspect ratio instruction to prompt
+    enhanced_prompt = f"{prompt}, aspect ratio {aspect_ratio}"
+    
     # Create multimodal content: [prompt, image] as per documentation
-    contents = [prompt, pil_image]
+    contents = [enhanced_prompt, pil_image]
     
     # Generate edited image using official SDK method
     response = client.models.generate_content(

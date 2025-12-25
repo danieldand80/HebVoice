@@ -25,6 +25,7 @@ function t(key) {
 const imageForm = document.getElementById('imageForm');
 const imageInput = document.getElementById('image');
 const imagePreview = document.getElementById('imagePreview');
+const removeImageBtn = document.getElementById('removeImageBtn');
 const generateBtn = document.getElementById('generateBtn');
 const generateBtnText = document.getElementById('generateBtnText');
 const generateLoader = document.getElementById('generateLoader');
@@ -48,11 +49,20 @@ imageInput.addEventListener('change', (e) => {
         const reader = new FileReader();
         reader.onload = (e) => {
             imagePreview.innerHTML = `<img src="${e.target.result}" alt="Preview" style="max-width: 300px; border-radius: 8px; margin-top: 10px;">`;
+            removeImageBtn.style.display = 'flex';
         };
         reader.readAsDataURL(file);
     } else {
         imagePreview.innerHTML = '';
+        removeImageBtn.style.display = 'none';
     }
+});
+
+// Remove image
+removeImageBtn.addEventListener('click', () => {
+    imageInput.value = '';
+    imagePreview.innerHTML = '';
+    removeImageBtn.style.display = 'none';
 });
 
 // Generate image
