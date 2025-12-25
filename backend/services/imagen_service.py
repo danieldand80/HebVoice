@@ -37,14 +37,13 @@ async def generate_image_from_prompt(
             config=types.GenerateContentConfig(
                 response_modalities=['IMAGE'],
                 image_config=types.ImageConfig(
-                    aspect_ratio=aspect_ratio,
-                    image_size="2K"
+                    aspect_ratio=aspect_ratio
                 )
             )
         )
-    except AttributeError:
-        # Fallback: if ImageConfig doesn't exist, try without it
-        print(f"[WARNING] ImageConfig not available, generating without aspect ratio control")
+    except (AttributeError, Exception) as e:
+        # Fallback: if ImageConfig doesn't work, try without it
+        print(f"[WARNING] ImageConfig failed ({str(e)}), generating without aspect ratio control")
         response = client.models.generate_content(
             model='gemini-2.5-flash-image',
             contents=prompt,
@@ -134,14 +133,13 @@ async def edit_image_with_prompt(
             config=types.GenerateContentConfig(
                 response_modalities=['IMAGE'],
                 edit_image_config=types.EditImageConfig(
-                    aspect_ratio=aspect_ratio,
-                    image_size="2K"
+                    aspect_ratio=aspect_ratio
                 )
             )
         )
-    except (AttributeError, TypeError):
+    except (AttributeError, TypeError, Exception) as e:
         # Fallback: if EditImageConfig doesn't work, try without it
-        print(f"[WARNING] EditImageConfig not available, generating without aspect ratio control")
+        print(f"[WARNING] EditImageConfig failed ({str(e)}), generating without aspect ratio control")
         response = client.models.generate_content(
             model='gemini-2.5-flash-image',
             contents=contents,
