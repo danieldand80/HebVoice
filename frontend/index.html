@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hebrew Image Generator - מחולל תמונות בעברית</title>
+    <title>AI Image Generator - מחולל תמונות AI</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -11,8 +11,8 @@
         <header>
             <div class="header-content">
                 <div>
-                    <h1 data-en="🎨 Product Image Generator" data-he="🎨 מחולל תמונות מוצר בעברית">🎨 מחולל תמונות מוצר בעברית</h1>
-                    <p data-en="Create professional product images with Hebrew text" data-he="צור תמונות מוצר מקצועיות עם טקסט בעברית">צור תמונות מוצר מקצועיות עם טקסט בעברית</p>
+                    <h1 data-en="🎨 AI Product Image Generator" data-he="🎨 מחולל תמונות מוצר AI">🎨 מחולל תמונות מוצר AI</h1>
+                    <p data-en="Create professional product images with AI" data-he="צור תמונות מוצר מקצועיות עם AI">צור תמונות מוצר מקצועיות עם AI</p>
                 </div>
                 <div class="language-switcher">
                     <button id="langBtn" class="lang-btn" onclick="toggleLanguage()">
@@ -24,7 +24,7 @@
 
         <!-- Step 1: Generate Image -->
         <div id="step1" class="step-container">
-            <h2 data-en="Step 1: Generate Image" data-he="שלב 1: יצירת התמונה">שלב 1: יצירת התמונה</h2>
+            <h2 data-en="Generate Image" data-he="יצירת תמונה">יצירת תמונה</h2>
             
             <form id="imageForm">
                 <div class="form-group">
@@ -48,11 +48,11 @@
                         name="prompt" 
                         required 
                         rows="4"
-                        data-placeholder-en="Example: Premium running shoes, professional product photography, white background, studio lighting"
-                        data-placeholder-he="לדוגמה: Premium running shoes, professional product photography, white background, studio lighting"
-                        placeholder="לדוגמה: Premium running shoes, professional product photography, white background, studio lighting"
+                        data-placeholder-en="Example: Premium running shoes with Hebrew text 'מבצע חם', professional product photography, white background, studio lighting"
+                        data-placeholder-he="לדוגמה: Premium running shoes with Hebrew text 'מבצע חם', professional product photography, white background, studio lighting"
+                        placeholder="לדוגמה: Premium running shoes with Hebrew text 'מבצע חם', professional product photography, white background, studio lighting"
                     ></textarea>
-                    <small data-en="Write in English for best results" data-he="כתוב באנגלית לתוצאות מיטביות">כתוב באנגלית לתוצאות מיטביות</small>
+                    <small data-en="Add text directly in the prompt. Write in English for best results." data-he="הוסף טקסט ישירות בפרומפט. כתוב באנגלית לתוצאות מיטביות.">הוסף טקסט ישירות בפרומפט. כתוב באנגלית לתוצאות מיטביות.</small>
                 </div>
 
                 <div class="form-group">
@@ -73,67 +73,21 @@
             </form>
         </div>
 
-        <!-- Step 2: Add Text -->
+        <!-- Step 2: Result -->
         <div id="step2" class="step-container" style="display: none;">
-            <h2 data-en="Step 2: Add Hebrew Text" data-he="שלב 2: הוספת טקסט בעברית">שלב 2: הוספת טקסט בעברית</h2>
+            <h2 data-en="Result" data-he="תוצאה">תוצאה</h2>
             
-            <div class="two-columns">
-                <div class="column">
-                    <h3 data-en="Preview" data-he="תצוגה מקדימה">תצוגה מקדימה</h3>
-                    <div id="imagePreviewContainer">
-                        <img id="generatedImage" src="" alt="Generated Image">
-                        <div id="textOverlay"></div>
-                    </div>
+            <div class="result-container">
+                <div id="imagePreviewContainer">
+                    <img id="generatedImage" src="" alt="Generated Image">
                 </div>
 
-                <div class="column">
-                    <h3 data-en="Text Editor" data-he="עריכת טקסט">עריכת טקסט</h3>
-                    
-                    <div class="form-group">
-                        <label data-en="Text Suggestions:" data-he="הצעות לטקסט:">הצעות לטקסט:</label>
-                        <button type="button" id="suggestTextsBtn" class="btn-secondary">
-                            <span data-en="💡 Suggest Texts" data-he="💡 הצע טקסטים">💡 הצע טקסטים</span>
-                        </button>
-                        <div id="textSuggestions"></div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="hebrewText" data-en="Hebrew Text:" data-he="טקסט בעברית:">טקסט בעברית:</label>
-                        <input 
-                            type="text" 
-                            id="hebrewText"
-                            data-placeholder-en="Enter Hebrew text..."
-                            data-placeholder-he="הכנס טקסט בעברית..."
-                            placeholder="הכנס טקסט בעברית..."
-                        >
-                    </div>
-
-                    <div class="form-group">
-                        <label for="fontSize" data-en="Font Size:" data-he="גודל גופן:">גודל גופן:</label>
-                        <input type="range" id="fontSize" min="30" max="150" value="60">
-                        <span id="fontSizeValue">60</span>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="textColor" data-en="Text Color:" data-he="צבע טקסט:">צבע טקסט:</label>
-                        <input type="color" id="textColor" value="#FFFFFF">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="strokeColor" data-en="Outline Color:" data-he="צבע מתאר:">צבע מתאר:</label>
-                        <input type="color" id="strokeColor" value="#000000">
-                    </div>
-
-                    <div class="form-group">
-                        <label data-en="Suggested Position:" data-he="מיקום מוצע:">מיקום מוצע:</label>
-                        <div id="suggestedPositions"></div>
-                    </div>
-
-                    <button type="button" id="addTextBtn" class="btn-primary">
-                        <span data-en="➕ Add Text" data-he="➕ הוסף טקסט">➕ הוסף טקסט</span>
+                <div class="actions">
+                    <button type="button" id="editBtn" class="btn-primary">
+                        <span data-en="✏️ Edit Prompt" data-he="✏️ ערוך פרומפט">✏️ ערוך פרומפט</span>
                     </button>
 
-                    <button type="button" id="downloadBtn" class="btn-success" style="display: none;">
+                    <button type="button" id="downloadBtn" class="btn-success">
                         <span data-en="⬇️ Download Image" data-he="⬇️ הורד תמונה">⬇️ הורד תמונה</span>
                     </button>
 
