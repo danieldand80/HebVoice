@@ -262,7 +262,7 @@ async def edit_image_with_prompt(
             config=types.EditImageConfig(
                 aspectRatio=aspect_ratio,
                 numberOfImages=1,
-                editMode="EDIT_MODE_OUTPAINT"  # or "EDIT_MODE_INPAINT"
+                editMode=types.EditMode.EDIT_MODE_PRODUCT_IMAGE  # Product image editing mode
             )
         )
         
