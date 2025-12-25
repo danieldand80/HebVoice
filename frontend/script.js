@@ -3,6 +3,76 @@ let currentImageData = null;
 let textPosition = { x: 0, y: 0 };
 let currentLang = 'he'; // Default Hebrew
 
+// Translations
+const translations = {
+    en: {
+        errorGenerateImage: 'Error generating image',
+        imageCreatedSuccess: 'Image created successfully! Now add Hebrew text',
+        enterProductDescription: 'Please enter product description first',
+        errorGenerateTexts: 'Error generating texts',
+        suggestingTexts: '⏳ Generating...',
+        suggestTextsBtn: '💡 Suggest Texts',
+        positionSelected: 'Position selected',
+        enterHebrewText: 'Please enter Hebrew text',
+        createImageFirst: 'Please create image first',
+        addingText: '⏳ Adding text...',
+        addTextBtn: '➕ Add Text',
+        textAddedSuccess: 'Text added successfully! You can add more text or download',
+        errorAddingText: 'Error adding text',
+        imageDownloaded: 'Image downloaded successfully!',
+        top: 'Top',
+        center: 'Center',
+        bottom: 'Bottom',
+        topLeft: 'Top Left',
+        topRight: 'Top Right',
+        bottomLeft: 'Bottom Left',
+        bottomRight: 'Bottom Right'
+    },
+    he: {
+        errorGenerateImage: 'שגיאה ביצירת התמונה',
+        imageCreatedSuccess: 'התמונה נוצרה בהצלחה! עכשיו הוסף טקסט בעברית',
+        enterProductDescription: 'נא להזין תיאור מוצר תחילה',
+        errorGenerateTexts: 'שגיאה ביצירת טקסטים',
+        suggestingTexts: '⏳ מייצר...',
+        suggestTextsBtn: '💡 הצע טקסטים',
+        positionSelected: 'מיקום נבחר',
+        enterHebrewText: 'נא להזין טקסט בעברית',
+        createImageFirst: 'נא ליצור תמונה תחילה',
+        addingText: '⏳ מוסיף טקסט...',
+        addTextBtn: '➕ הוסף טקסט',
+        textAddedSuccess: 'הטקסט נוסף בהצלחה! תוכל להוסיף טקסט נוסף או להוריד',
+        errorAddingText: 'שגיאה בהוספת טקסט',
+        imageDownloaded: 'התמונה הורדה בהצלחה!',
+        top: 'למעלה',
+        center: 'מרכז',
+        bottom: 'למטה',
+        topLeft: 'שמאל למעלה',
+        topRight: 'ימין למעלה',
+        bottomLeft: 'שמאל למטה',
+        bottomRight: 'ימין למטה'
+    }
+};
+
+// Get translated text
+function t(key) {
+    return translations[currentLang][key] || key;
+}
+
+// Translate position names
+function translatePosition(name) {
+    const posMap = {
+        'Top': 'top',
+        'Center': 'center',
+        'Bottom': 'bottom',
+        'Top Left': 'topLeft',
+        'Top Right': 'topRight',
+        'Bottom Left': 'bottomLeft',
+        'Bottom Right': 'bottomRight'
+    };
+    const key = posMap[name];
+    return key ? t(key) : name;
+}
+
 // Elements
 const imageForm = document.getElementById('imageForm');
 const imageInput = document.getElementById('image');
@@ -68,7 +138,7 @@ imageForm.addEventListener('submit', async (e) => {
         
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'שגיאה ביצירת התמונה');
+            throw new Error(error.detail || t('errorGenerateImage'));
         }
         
         const data = await response.json();
@@ -86,7 +156,7 @@ imageForm.addEventListener('submit', async (e) => {
         // Show suggested positions
         displaySuggestedPositions(data.suggested_positions);
         
-        showSuccess('התמונה נוצרה בהצלחה! עכשיו הוסף טקסט בעברית');
+        showSuccess(t('imageCreatedSuccess'));
         
     } catch (error) {
         showError(error.message);
@@ -102,12 +172,12 @@ suggestTextsBtn.addEventListener('click', async () => {
     const prompt = document.getElementById('prompt').value;
     
     if (!prompt) {
-        showError('נא להזין תיאור מוצר תחילה');
+        showError(t('enterProductDescription'));
         return;
     }
     
     suggestTextsBtn.disabled = true;
-    suggestTextsBtn.textContent = '⏳ מייצר...';
+    suggestTextsBtn.textContent = t('suggestingTexts');
     
     try {
         const formData = new FormData();
@@ -119,7 +189,7 @@ suggestTextsBtn.addEventListener('click', async () => {
         });
         
         if (!response.ok) {
-            throw new Error('שגיאה ביצירת טקסטים');
+            throw new Error(t('errorGenerateTexts'));
         }
         
         const data = await response.json();
@@ -140,7 +210,7 @@ suggestTextsBtn.addEventListener('click', async () => {
         showError(error.message);
     } finally {
         suggestTextsBtn.disabled = false;
-        suggestTextsBtn.textContent = '💡 הצע טקסטים';
+        suggestTextsBtn.textContent = t('suggestTextsBtn');
     }
 });
 
@@ -151,10 +221,11 @@ function displaySuggestedPositions(positions) {
     positions.forEach(pos => {
         const btn = document.createElement('button');
         btn.className = 'position-btn';
-        btn.textContent = `${pos.name} (${pos.x}, ${pos.y})`;
+        const translatedName = translatePosition(pos.name);
+        btn.textContent = `${translatedName} (${pos.x}, ${pos.y})`;
         btn.onclick = () => {
             textPosition = { x: pos.x, y: pos.y };
-            showSuccess(`מיקום נבחר: ${pos.name}`);
+            showSuccess(`${t('positionSelected')}: ${translatedName}`);
         };
         suggestedPositions.appendChild(btn);
     });
@@ -170,17 +241,17 @@ addTextBtn.addEventListener('click', async () => {
     const text = hebrewTextInput.value.trim();
     
     if (!text) {
-        showError('נא להזין טקסט בעברית');
+        showError(t('enterHebrewText'));
         return;
     }
     
     if (!currentImageId) {
-        showError('נא ליצור תמונה תחילה');
+        showError(t('createImageFirst'));
         return;
     }
     
     addTextBtn.disabled = true;
-    addTextBtn.textContent = '⏳ מוסיף טקסט...';
+    addTextBtn.textContent = t('addingText');
     hideMessages();
     
     try {
@@ -201,7 +272,7 @@ addTextBtn.addEventListener('click', async () => {
         
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'שגיאה בהוספת טקסט');
+            throw new Error(error.detail || t('errorAddingText'));
         }
         
         const data = await response.json();
@@ -212,13 +283,13 @@ addTextBtn.addEventListener('click', async () => {
         // Show download button
         downloadBtn.style.display = 'block';
         
-        showSuccess('הטקסט נוסף בהצלחה! תוכל להוסיף טקסט נוסף או להוריד');
+        showSuccess(t('textAddedSuccess'));
         
     } catch (error) {
         showError(error.message);
     } finally {
         addTextBtn.disabled = false;
-        addTextBtn.textContent = '➕ הוסף טקסט';
+        addTextBtn.textContent = t('addTextBtn');
     }
 });
 
@@ -226,7 +297,7 @@ addTextBtn.addEventListener('click', async () => {
 downloadBtn.addEventListener('click', () => {
     if (currentImageId) {
         window.open(`/api/download/${currentImageId}`, '_blank');
-        showSuccess('התמונה הורדה בהצלחה!');
+        showSuccess(t('imageDownloaded'));
     }
 });
 
@@ -287,6 +358,19 @@ function toggleLanguage() {
     
     // Update language button
     document.getElementById('langText').textContent = currentLang === 'he' ? 'EN' : 'HE';
+    
+    // Update dynamic button texts
+    if (!suggestTextsBtn.disabled) {
+        suggestTextsBtn.innerHTML = `<span data-en="💡 Suggest Texts" data-he="💡 הצע טקסטים">${t('suggestTextsBtn')}</span>`;
+    }
+    if (!addTextBtn.disabled) {
+        addTextBtn.innerHTML = `<span data-en="➕ Add Text" data-he="➕ הוסף טקסט">${t('addTextBtn')}</span>`;
+    }
+    
+    // Re-render position buttons if they exist
+    if (currentImageData && currentImageData.suggested_positions) {
+        displaySuggestedPositions(currentImageData.suggested_positions);
+    }
     
     // Save preference
     localStorage.setItem('language', currentLang);
