@@ -135,8 +135,7 @@ async def edit_image_with_prompt(
             prompt=prompt,
             reference_images=[
                 types.RawReferenceImage(
-                    reference_image=pil_image,
-                    reference_type="RAW"
+                    referenceImage=pil_image  # Use camelCase field name
                 )
             ],
             config=types.EditImageConfig(
