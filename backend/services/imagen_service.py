@@ -94,8 +94,19 @@ async def generate_image_from_prompt(
             raise Exception(f"No candidates in response")
         
         candidate = response.candidates[0]
+        
+        # Debug: log finish_reason and safety_ratings
+        if hasattr(candidate, 'finish_reason'):
+            print(f"[DEBUG] finish_reason: {candidate.finish_reason}")
+        if hasattr(candidate, 'safety_ratings'):
+            print(f"[DEBUG] safety_ratings: {candidate.safety_ratings}")
+        
         if not hasattr(candidate, 'content') or not candidate.content:
-            raise Exception(f"No content in candidate")
+            # Check if blocked by safety filters
+            error_msg = f"No content in candidate. Finish reason: {getattr(candidate, 'finish_reason', 'unknown')}"
+            if hasattr(candidate, 'safety_ratings'):
+                error_msg += f"\nSafety ratings: {candidate.safety_ratings}"
+            raise Exception(error_msg)
         
         if not hasattr(candidate.content, 'parts') or not candidate.content.parts:
             raise Exception(f"No parts in content")
@@ -107,8 +118,11 @@ async def generate_image_from_prompt(
                 
                 print(f"[Nano Banana] Image generated successfully! Size: {len(image_bytes)} bytes")
                 
-                # Resize to target aspect ratio
-                image_bytes = resize_to_aspect_ratio(image_bytes, aspect_ratio)
+                # Resize to target aspect ratio (if not already correct)
+                try:
+                    image_bytes = resize_to_aspect_ratio(image_bytes, aspect_ratio)
+                except Exception as resize_error:
+                    print(f"[WARNING] Failed to resize image: {resize_error}. Returning original.")
                 
                 return image_bytes
         
@@ -169,8 +183,19 @@ async def edit_image_with_prompt(
             raise Exception(f"No candidates in response")
         
         candidate = response.candidates[0]
+        
+        # Debug: log finish_reason and safety_ratings
+        if hasattr(candidate, 'finish_reason'):
+            print(f"[DEBUG] finish_reason: {candidate.finish_reason}")
+        if hasattr(candidate, 'safety_ratings'):
+            print(f"[DEBUG] safety_ratings: {candidate.safety_ratings}")
+        
         if not hasattr(candidate, 'content') or not candidate.content:
-            raise Exception(f"No content in candidate")
+            # Check if blocked by safety filters
+            error_msg = f"No content in candidate. Finish reason: {getattr(candidate, 'finish_reason', 'unknown')}"
+            if hasattr(candidate, 'safety_ratings'):
+                error_msg += f"\nSafety ratings: {candidate.safety_ratings}"
+            raise Exception(error_msg)
         
         if not hasattr(candidate.content, 'parts') or not candidate.content.parts:
             raise Exception(f"No parts in content")
@@ -182,8 +207,11 @@ async def edit_image_with_prompt(
                 
                 print(f"[Nano Banana] Image edited successfully! Size: {len(image_bytes)} bytes")
                 
-                # Resize to target aspect ratio
-                image_bytes = resize_to_aspect_ratio(image_bytes, aspect_ratio)
+                # Resize to target aspect ratio (if not already correct)
+                try:
+                    image_bytes = resize_to_aspect_ratio(image_bytes, aspect_ratio)
+                except Exception as resize_error:
+                    print(f"[WARNING] Failed to resize image: {resize_error}. Returning original.")
                 
                 return image_bytes
         

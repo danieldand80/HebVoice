@@ -134,7 +134,13 @@ async def generate_image(
         import traceback
         error_detail = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
         print(f"ERROR: {error_detail}")
-        raise HTTPException(status_code=500, detail=str(e))
+        
+        # User-friendly error messages
+        error_msg = str(e)
+        if "No content in candidate" in error_msg or "NO_IMAGE" in error_msg:
+            error_msg = "Failed to generate image. This may be due to:\n- Prompt being blocked by safety filters\n- Temporary API issues\n- Try a more specific and descriptive prompt"
+        
+        raise HTTPException(status_code=500, detail=error_msg)
 
 @app.post("/api/suggest-texts")
 async def suggest_texts(
