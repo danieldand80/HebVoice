@@ -6,7 +6,7 @@ Image generation tool with Hebrew text overlay for Israeli e-commerce market usi
 
 - 🎨 **text2img** - Generate product images from text descriptions
 - 🖼️ **img2img** - Edit existing photos (change backgrounds, modify images)
-- 📐 **Native aspect ratio support** - 16:9, 9:16, 1:1 (with new generate_images API)
+- 📐 **Smart aspect ratio handling** - 16:9, 9:16, 1:1 (enhanced prompts + intelligent crop/resize)
 - Upload product photo OR write text prompt
 - Choose format: 16:9 (horizontal) or 9:16 (vertical)
 - Add Hebrew text overlay with visual editor
@@ -65,8 +65,9 @@ Visit: http://localhost:8000
 ## Tech Stack
 
 - **Backend:** FastAPI (Python)
-- **Image Generation:** Gemini 2.5 Flash Image / Imagen 3.0 with native aspect_ratio support
-- **SDK:** google-genai 1.4.0+ (with generate_images API)
+- **Image Generation:** Gemini 2.5 Flash Image via Google AI Studio API
+- **SDK:** google-genai 1.4.0+
+- **Aspect Ratio:** Smart prompts + PIL crop/resize (AI Studio API limitation)
 - **Text Overlay:** Pillow (PIL)
 - **Text Generation:** GPT-4 (optional)
 - **Frontend:** Vanilla HTML/CSS/JS
@@ -86,16 +87,23 @@ Much cheaper than video generation!
 
 ## Aspect Ratio Solution
 
-**Problem:** Old API (`generate_content`) didn't support native aspect_ratio parameter.
+**Problem:** Google AI Studio API does NOT support native aspect_ratio control.
+- `generate_images` (Imagen 3.0) → Vertex AI only ❌
+- `edit_image` → Vertex AI only ❌
+- `gemini-2.5-flash-image` → No native aspect_ratio ❌
 
-**Solution:** Updated to SDK 1.4.0+ with new `generate_images` API:
-- ✅ Native `aspectRatio` support ("16:9", "9:16", "1:1")
-- ✅ Model knows target proportions during generation → better composition
-- ✅ Automatic fallback to old method if new API unavailable
+**Our Solution:** Smart prompts + intelligent crop/resize
+- ✅ Enhanced prompts with detailed composition guidance for each aspect ratio
+- ✅ High-quality LANCZOS resize algorithm
+- ✅ Smart center-crop to preserve important parts
+- ✅ Works with Google AI Studio API (GOOGLE_API_KEY)
 
 **How it works:**
-1. Try new `generate_images` API (Imagen 3.0 or Gemini 2.5 Flash Image)
-2. If fails → fallback to old API with enhanced prompts + crop/resize
+1. Add detailed aspect ratio hints to prompt (e.g., "VERTICAL PORTRAIT composition, 9:16 aspect ratio...")
+2. Generate image with `gemini-2.5-flash-image`
+3. Smart crop and resize to exact dimensions (1920x1080, 1080x1920, 1024x1024)
+
+**Result:** Best possible quality with AI Studio API, though not as perfect as Vertex AI's native support.
 
 ## Workflow
 
