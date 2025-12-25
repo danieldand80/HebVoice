@@ -55,14 +55,8 @@ async def generate_image_from_prompt(
         
         for part in candidate.content.parts:
             if part.inline_data:
-                # Use as_image() method from official documentation
-                pil_image = part.as_image()
-                
-                # Convert PIL Image to bytes
-                buffer = io.BytesIO()
-                pil_image.save(buffer, format='PNG')
-                buffer.seek(0)
-                image_bytes = buffer.getvalue()
+                # Extract image bytes directly from inline_data
+                image_bytes = part.inline_data.data
                 
                 print(f"[Nano Banana] Image generated successfully! Size: {len(image_bytes)} bytes")
                 return image_bytes
@@ -132,14 +126,8 @@ async def edit_image_with_prompt(
         
         for part in candidate.content.parts:
             if part.inline_data:
-                # Use as_image() method from official documentation
-                edited_pil_image = part.as_image()
-                
-                # Convert PIL Image to bytes
-                buffer = io.BytesIO()
-                edited_pil_image.save(buffer, format='PNG')
-                buffer.seek(0)
-                image_bytes = buffer.getvalue()
+                # Extract image bytes directly from inline_data
+                image_bytes = part.inline_data.data
                 
                 print(f"[Nano Banana] Image edited successfully! Size: {len(image_bytes)} bytes")
                 return image_bytes
