@@ -1,8 +1,12 @@
 """
-Imagen service with native aspect_ratio support using NEW API ONLY.
-- text2img: generate_images API with aspectRatio
-- img2img: edit_image API with aspectRatio
-NO fallback, NO resize, NO crop.
+Imagen service for Google AI Studio API with smart aspect_ratio handling.
+
+IMPORTANT: Google AI Studio API does NOT support native aspect_ratio control.
+- generate_images (Imagen 3.0) - Vertex AI only
+- edit_image - Vertex AI only
+- gemini-2.5-flash-image - No native aspect_ratio support
+
+Solution: Smart prompts + intelligent crop/resize for best results.
 """
 
 from google import genai
@@ -25,56 +29,58 @@ else:
 AspectRatio = Literal["9:16", "16:9", "1:1"]
 
 
-async def generate_image_with_new_api(
-    prompt: str,
-    aspect_ratio: AspectRatio = "16:9",
-    model: str = "imagen-3.0-generate-001"
-) -> bytes:
+def smart_crop_and_resize(image_bytes: bytes, aspect_ratio: AspectRatio) -> bytes:
     """
-    Generate image using NEW generate_images API with NATIVE aspect_ratio support.
-    
-    This method uses the new API that properly supports aspect ratios,
-    so the model knows the target proportions during generation.
+    Intelligently crop and resize image to target aspect ratio.
+    Tries to preserve the center/important parts of the image.
     """
     
-    if not GOOGLE_API_KEY or not client:
-        raise Exception("GOOGLE_API_KEY not set in environment")
+    # Target dimensions optimized for quality
+    target_dimensions = {
+        "16:9": (1920, 1080),   # Full HD horizontal
+        "9:16": (1080, 1920),   # Full HD vertical
+        "1:1": (1024, 1024)     # Square
+    }
     
-    print(f"[New API] Generating image with model: {model}")
-    print(f"[New API] Prompt: {prompt}")
-    print(f"[New API] Aspect ratio: {aspect_ratio}")
+    target_width, target_height = target_dimensions[aspect_ratio]
     
-    try:
-        response = client.models.generate_images(
-            model=model,
-            prompt=prompt,
-            config=types.GenerateImagesConfig(
-                aspectRatio=aspect_ratio,
-                numberOfImages=1
-            )
-        )
-        
-        print(f"[New API] Response received")
-        
-        # Extract image
-        if not response.generated_images or len(response.generated_images) == 0:
-            raise Exception("No images generated in response")
-        
-        # Get first image
-        generated_image = response.generated_images[0]
-        pil_image = generated_image.image.as_image()
-        
-        print(f"[New API] Image generated! Size: {pil_image.size}")
-        
-        # Convert to bytes
-        buffer = io.BytesIO()
-        pil_image.save(buffer, format='PNG')
-        buffer.seek(0)
-        return buffer.getvalue()
-        
-    except Exception as e:
-        print(f"[New API] Failed: {str(e)}")
-        raise
+    # Load image
+    img = PILImage.open(io.BytesIO(image_bytes))
+    original_width, original_height = img.size
+    
+    print(f"[Smart Resize] Original: {original_width}x{original_height}")
+    print(f"[Smart Resize] Target: {target_width}x{target_height} ({aspect_ratio})")
+    
+    # Calculate aspect ratios
+    target_ratio = target_width / target_height
+    current_ratio = original_width / original_height
+    
+    # Smart crop to target aspect ratio (preserves center)
+    if abs(current_ratio - target_ratio) > 0.01:
+        if current_ratio > target_ratio:
+            # Wider than needed - crop width (center crop)
+            new_width = int(original_height * target_ratio)
+            left = (original_width - new_width) // 2
+            img = img.crop((left, 0, left + new_width, original_height))
+            print(f"[Smart Resize] Cropped width: {original_width} → {new_width}")
+        else:
+            # Taller than needed - crop height (center crop)
+            new_height = int(original_width / target_ratio)
+            top = (original_height - new_height) // 2
+            img = img.crop((0, top, original_width, top + new_height))
+            print(f"[Smart Resize] Cropped height: {original_height} → {new_height}")
+    
+    # High-quality resize
+    if img.size != (target_width, target_height):
+        img = img.resize((target_width, target_height), PILImage.LANCZOS)
+    
+    print(f"[Smart Resize] Final: {img.size}")
+    
+    # Convert to bytes
+    buffer = io.BytesIO()
+    img.save(buffer, format='PNG', optimize=True)
+    buffer.seek(0)
+    return buffer.getvalue()
 
 
 async def generate_image_from_prompt(
@@ -82,10 +88,12 @@ async def generate_image_from_prompt(
     aspect_ratio: AspectRatio = "16:9"
 ) -> bytes:
     """
-    Generate image with NATIVE aspect_ratio support using NEW API ONLY.
+    Generate image using gemini-2.5-flash-image (Google AI Studio API).
     
-    Uses generate_images API with native aspectRatio parameter.
-    No fallback, no resize.
+    Since native aspect_ratio is not supported, we:
+    1. Add detailed aspect ratio hints to the prompt
+    2. Generate image
+    3. Smart crop and resize to exact dimensions
     
     Args:
         prompt: Text description of the image
@@ -95,8 +103,67 @@ async def generate_image_from_prompt(
         Image bytes (PNG format)
     """
     
-    # ONLY new API - no fallback
-    return await generate_image_with_new_api(prompt, aspect_ratio)
+    if not GOOGLE_API_KEY or not client:
+        raise Exception("GOOGLE_API_KEY not set in environment")
+    
+    # Enhanced prompts with detailed composition guidance
+    aspect_hints = {
+        "16:9": "Create a HORIZONTAL WIDESCREEN composition, landscape orientation, 16:9 aspect ratio. Compose the scene with horizontal layout in mind. Wide cinematic framing.",
+        "9:16": "Create a VERTICAL PORTRAIT composition, tall format, 9:16 aspect ratio. Compose the scene with vertical layout in mind. Portrait orientation, suitable for mobile/stories.",
+        "1:1": "Create a SQUARE composition, 1:1 aspect ratio, equal width and height. Center the subject perfectly for square format. Balanced composition."
+    }
+    
+    # Combine user prompt with aspect ratio guidance
+    enhanced_prompt = f"{prompt}\n\nCOMPOSITION: {aspect_hints[aspect_ratio]}"
+    
+    print(f"[Gemini 2.5 Flash] Generating image")
+    print(f"[Gemini 2.5 Flash] Target aspect ratio: {aspect_ratio}")
+    print(f"[Gemini 2.5 Flash] Enhanced prompt: {enhanced_prompt[:100]}...")
+    
+    # Generate image
+    response = client.models.generate_content(
+        model='gemini-2.5-flash-image',
+        contents=[enhanced_prompt],
+        config=types.GenerateContentConfig(
+            response_modalities=['IMAGE']
+        )
+    )
+    
+    print(f"[Gemini 2.5 Flash] Response received")
+    
+    # Extract image
+    try:
+        if not hasattr(response, 'candidates') or not response.candidates:
+            raise Exception("No candidates in response")
+        
+        candidate = response.candidates[0]
+        
+        if hasattr(candidate, 'finish_reason'):
+            print(f"[DEBUG] finish_reason: {candidate.finish_reason}")
+        
+        if not hasattr(candidate, 'content') or not candidate.content:
+            error_msg = f"No content in candidate. Finish reason: {getattr(candidate, 'finish_reason', 'unknown')}"
+            if hasattr(candidate, 'safety_ratings'):
+                error_msg += f"\nSafety ratings: {candidate.safety_ratings}"
+            raise Exception(error_msg)
+        
+        if not hasattr(candidate.content, 'parts') or not candidate.content.parts:
+            raise Exception("No parts in content")
+        
+        for part in candidate.content.parts:
+            if part.inline_data:
+                image_bytes = part.inline_data.data
+                print(f"[Gemini 2.5 Flash] Image generated! Size: {len(image_bytes)} bytes")
+                
+                # Smart crop and resize to target aspect ratio
+                image_bytes = smart_crop_and_resize(image_bytes, aspect_ratio)
+                return image_bytes
+        
+        raise Exception("No image found in response parts")
+        
+    except Exception as e:
+        import traceback
+        raise Exception(f"Failed to extract image: {str(e)}\n\nTraceback: {traceback.format_exc()}")
 
 
 async def edit_image_with_prompt(
@@ -105,18 +172,28 @@ async def edit_image_with_prompt(
     aspect_ratio: AspectRatio = "16:9"
 ) -> bytes:
     """
-    Edit existing image using NEW edit_image API with NATIVE aspect_ratio support.
+    Edit existing image using gemini-2.5-flash-image (img2img).
     
-    Uses edit_image API with native aspectRatio parameter.
-    No resize, no crop.
+    Since native aspect_ratio is not supported, we:
+    1. Add aspect ratio context to the prompt
+    2. Send multimodal request (prompt + image)
+    3. Smart crop and resize result to exact dimensions
+    
+    Args:
+        image_bytes: Original image bytes
+        prompt: Edit instruction
+        aspect_ratio: Target aspect ratio ("16:9", "9:16", "1:1")
+    
+    Returns:
+        Edited image bytes (PNG format)
     """
     
     if not GOOGLE_API_KEY or not client:
         raise Exception("GOOGLE_API_KEY not set in environment")
     
-    print(f"[New API Edit] Editing image with prompt: {prompt}")
-    print(f"[New API Edit] Aspect ratio: {aspect_ratio}")
-    print(f"[New API Edit] Image bytes size: {len(image_bytes)}")
+    print(f"[Gemini Img2Img] Editing image")
+    print(f"[Gemini Img2Img] Target aspect ratio: {aspect_ratio}")
+    print(f"[Gemini Img2Img] Image bytes size: {len(image_bytes)}")
     
     if len(image_bytes) == 0:
         raise Exception("Image bytes are empty!")
@@ -124,46 +201,65 @@ async def edit_image_with_prompt(
     # Convert to PIL Image
     try:
         pil_image = PILImage.open(io.BytesIO(image_bytes))
-        print(f"[New API Edit] Input image: {pil_image.size}, mode: {pil_image.mode}")
+        print(f"[Gemini Img2Img] Input image: {pil_image.size}, mode: {pil_image.mode}")
     except Exception as e:
         raise Exception(f"Failed to open image: {str(e)}")
     
-    try:
-        # Use NEW edit_image API with reference image
-        response = client.models.edit_image(
-            model="imagen-3.0-generate-001",
-            prompt=prompt,
-            reference_images=[
-                types.RawReferenceImage(
-                    referenceImage=pil_image  # Use camelCase field name
-                )
-            ],
-            config=types.EditImageConfig(
-                aspectRatio=aspect_ratio,
-                numberOfImages=1,
-                editMode=types.EditMode.EDIT_MODE_PRODUCT_IMAGE  # Product image editing mode
-            )
+    # Enhanced prompts with composition preservation/adjustment
+    aspect_hints = {
+        "16:9": "Edit the image and adjust composition for HORIZONTAL WIDESCREEN format (16:9). Maintain subject but optimize for landscape orientation.",
+        "9:16": "Edit the image and adjust composition for VERTICAL PORTRAIT format (9:16). Maintain subject but optimize for portrait orientation.",
+        "1:1": "Edit the image and adjust composition for SQUARE format (1:1). Maintain subject but center perfectly for square frame."
+    }
+    
+    enhanced_prompt = f"{prompt}\n\nCOMPOSITION: {aspect_hints[aspect_ratio]}"
+    
+    print(f"[Gemini Img2Img] Enhanced prompt: {enhanced_prompt[:100]}...")
+    
+    # Create multimodal content (prompt + image)
+    contents = [enhanced_prompt, pil_image]
+    
+    # Generate edited image
+    response = client.models.generate_content(
+        model='gemini-2.5-flash-image',
+        contents=contents,
+        config=types.GenerateContentConfig(
+            response_modalities=['IMAGE']
         )
+    )
+    
+    print(f"[Gemini Img2Img] Response received")
+    
+    # Extract image
+    try:
+        if not hasattr(response, 'candidates') or not response.candidates:
+            raise Exception("No candidates in response")
         
-        print(f"[New API Edit] Response received")
+        candidate = response.candidates[0]
         
-        # Extract edited image
-        if not response.generated_images or len(response.generated_images) == 0:
-            raise Exception("No images generated in response")
+        if hasattr(candidate, 'finish_reason'):
+            print(f"[DEBUG] finish_reason: {candidate.finish_reason}")
         
-        # Get first image
-        generated_image = response.generated_images[0]
-        edited_pil_image = generated_image.image.as_image()
+        if not hasattr(candidate, 'content') or not candidate.content:
+            error_msg = f"No content in candidate. Finish reason: {getattr(candidate, 'finish_reason', 'unknown')}"
+            if hasattr(candidate, 'safety_ratings'):
+                error_msg += f"\nSafety ratings: {candidate.safety_ratings}"
+            raise Exception(error_msg)
         
-        print(f"[New API Edit] Image edited! Size: {edited_pil_image.size}")
+        if not hasattr(candidate.content, 'parts') or not candidate.content.parts:
+            raise Exception("No parts in content")
         
-        # Convert to bytes
-        buffer = io.BytesIO()
-        edited_pil_image.save(buffer, format='PNG')
-        buffer.seek(0)
-        return buffer.getvalue()
+        for part in candidate.content.parts:
+            if part.inline_data:
+                image_bytes = part.inline_data.data
+                print(f"[Gemini Img2Img] Image edited! Size: {len(image_bytes)} bytes")
+                
+                # Smart crop and resize to target aspect ratio
+                image_bytes = smart_crop_and_resize(image_bytes, aspect_ratio)
+                return image_bytes
+        
+        raise Exception("No image found in response parts")
         
     except Exception as e:
-        print(f"[New API Edit] Failed: {str(e)}")
-        raise
-
+        import traceback
+        raise Exception(f"Failed to extract edited image: {str(e)}\n\nTraceback: {traceback.format_exc()}")
