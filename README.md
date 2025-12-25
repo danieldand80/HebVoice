@@ -6,6 +6,7 @@ Image generation tool with Hebrew text overlay for Israeli e-commerce market usi
 
 - 🎨 **text2img** - Generate product images from text descriptions
 - 🖼️ **img2img** - Edit existing photos (change backgrounds, modify images)
+- 📐 **Native aspect ratio support** - 16:9, 9:16, 1:1 (with new generate_images API)
 - Upload product photo OR write text prompt
 - Choose format: 16:9 (horizontal) or 9:16 (vertical)
 - Add Hebrew text overlay with visual editor
@@ -64,7 +65,8 @@ Visit: http://localhost:8000
 ## Tech Stack
 
 - **Backend:** FastAPI (Python)
-- **Image Generation:** Gemini 2.5 Flash Image (Nano Banana)
+- **Image Generation:** Gemini 2.5 Flash Image / Imagen 3.0 with native aspect_ratio support
+- **SDK:** google-genai 1.4.0+ (with generate_images API)
 - **Text Overlay:** Pillow (PIL)
 - **Text Generation:** GPT-4 (optional)
 - **Frontend:** Vanilla HTML/CSS/JS
@@ -81,6 +83,19 @@ Visit: http://localhost:8000
 - 10,000 images/month: ~$390
 
 Much cheaper than video generation!
+
+## Aspect Ratio Solution
+
+**Problem:** Old API (`generate_content`) didn't support native aspect_ratio parameter.
+
+**Solution:** Updated to SDK 1.4.0+ with new `generate_images` API:
+- ✅ Native `aspectRatio` support ("16:9", "9:16", "1:1")
+- ✅ Model knows target proportions during generation → better composition
+- ✅ Automatic fallback to old method if new API unavailable
+
+**How it works:**
+1. Try new `generate_images` API (Imagen 3.0 or Gemini 2.5 Flash Image)
+2. If fails → fallback to old API with enhanced prompts + crop/resize
 
 ## Workflow
 
