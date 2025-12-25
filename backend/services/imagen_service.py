@@ -17,55 +17,6 @@ else:
 
 AspectRatio = Literal["9:16", "16:9", "1:1"]
 
-
-def resize_to_aspect_ratio(image_bytes: bytes, aspect_ratio: AspectRatio) -> bytes:
-    """Resize image to match target aspect ratio by cropping and scaling"""
-    
-    # Target dimensions for each aspect ratio
-    target_dimensions = {
-        "16:9": (1920, 1080),   # Horizontal
-        "9:16": (1080, 1920),   # Vertical
-        "1:1": (1024, 1024)     # Square
-    }
-    
-    target_width, target_height = target_dimensions[aspect_ratio]
-    
-    # Load image
-    img = PILImage.open(io.BytesIO(image_bytes))
-    original_width, original_height = img.size
-    
-    print(f"[Resize] Original: {original_width}x{original_height} -> Target: {target_width}x{target_height}")
-    
-    # Calculate ratios
-    target_ratio = target_width / target_height
-    current_ratio = original_width / original_height
-    
-    # Crop to target aspect ratio first
-    if abs(current_ratio - target_ratio) > 0.01:  # Need to crop
-        if current_ratio > target_ratio:
-            # Wider than needed - crop width
-            new_width = int(original_height * target_ratio)
-            left = (original_width - new_width) // 2
-            img = img.crop((left, 0, left + new_width, original_height))
-        else:
-            # Taller than needed - crop height
-            new_height = int(original_width / target_ratio)
-            top = (original_height - new_height) // 2
-            img = img.crop((0, top, original_width, top + new_height))
-    
-    # Resize to target dimensions
-    if img.size != (target_width, target_height):
-        img = img.resize((target_width, target_height), PILImage.LANCZOS)
-    
-    print(f"[Resize] Final: {img.size}")
-    
-    # Convert to bytes
-    buffer = io.BytesIO()
-    img.save(buffer, format='PNG')
-    buffer.seek(0)
-    return buffer.getvalue()
-
-
 async def generate_image_from_prompt(
     prompt: str,
     aspect_ratio: AspectRatio = "16:9"
@@ -78,28 +29,16 @@ async def generate_image_from_prompt(
     print(f"[Nano Banana] Generating image (text2img) with prompt: {prompt}")
     print(f"[Nano Banana] Aspect ratio: {aspect_ratio}")
     
-    # Generate image from text using official SDK method
-    try:
-        response = client.models.generate_content(
-            model='gemini-2.5-flash-image',
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_modalities=['IMAGE'],
-                image_config=types.ImageConfig(
-                    aspect_ratio=aspect_ratio
-                )
+    # Generate image from text using official SDK method (as per docs)
+    response = client.models.generate_content(
+        model='gemini-2.5-flash-image',
+        contents=[prompt],
+        config=types.GenerateContentConfig(
+            image_config=types.ImageConfig(
+                aspect_ratio=aspect_ratio
             )
         )
-    except (AttributeError, Exception) as e:
-        # Fallback: if ImageConfig doesn't work, try without it
-        print(f"[WARNING] ImageConfig failed ({str(e)}), generating without aspect ratio control")
-        response = client.models.generate_content(
-            model='gemini-2.5-flash-image',
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_modalities=['IMAGE']
-            )
-        )
+    )
     
     print(f"[Nano Banana] Response received. Type: {type(response)}")
     
@@ -129,15 +68,21 @@ async def generate_image_from_prompt(
         
         for part in candidate.content.parts:
             if part.inline_data:
-                # Extract image bytes directly from inline_data
-                image_bytes = part.inline_data.data
-                
-                print(f"[Nano Banana] Image generated successfully! Size: {len(image_bytes)} bytes")
-                
-                # Apply aspect ratio through post-processing
-                image_bytes = resize_to_aspect_ratio(image_bytes, aspect_ratio)
-                
-                return image_bytes
+                # Use as_image() as per official documentation
+                try:
+                    image = part.as_image()
+                    # Convert PIL Image to bytes
+                    buffer = io.BytesIO()
+                    image.save(buffer, format='PNG')
+                    buffer.seek(0)
+                    image_bytes = buffer.getvalue()
+                    print(f"[Nano Banana] Image generated! Dimensions: {image.size}, Size: {len(image_bytes)} bytes")
+                    return image_bytes
+                except AttributeError:
+                    # Fallback to direct inline_data access
+                    image_bytes = part.inline_data.data
+                    print(f"[Nano Banana] Image generated! Size: {len(image_bytes)} bytes")
+                    return image_bytes
         
         raise Exception(f"No image found in response parts")
         
@@ -178,28 +123,16 @@ async def edit_image_with_prompt(
     # Create multimodal content: [prompt, image] as per documentation
     contents = [prompt, pil_image]
     
-    # Generate edited image using official SDK method with EditImageConfig
-    try:
-        response = client.models.generate_content(
-            model='gemini-2.5-flash-image',
-            contents=contents,
-            config=types.GenerateContentConfig(
-                response_modalities=['IMAGE'],
-                edit_image_config=types.EditImageConfig(
-                    aspect_ratio=aspect_ratio
-                )
+    # Generate edited image using official SDK method (as per docs)
+    response = client.models.generate_content(
+        model='gemini-2.5-flash-image',
+        contents=contents,
+        config=types.GenerateContentConfig(
+            image_config=types.ImageConfig(
+                aspect_ratio=aspect_ratio
             )
         )
-    except (AttributeError, TypeError, Exception) as e:
-        # Fallback: if EditImageConfig doesn't work, try without it
-        print(f"[WARNING] EditImageConfig failed ({str(e)}), generating without aspect ratio control")
-        response = client.models.generate_content(
-            model='gemini-2.5-flash-image',
-            contents=contents,
-            config=types.GenerateContentConfig(
-                response_modalities=['IMAGE']
-            )
-        )
+    )
     
     print(f"[Nano Banana] Edit response received. Type: {type(response)}")
     
@@ -229,15 +162,21 @@ async def edit_image_with_prompt(
         
         for part in candidate.content.parts:
             if part.inline_data:
-                # Extract image bytes directly from inline_data
-                image_bytes = part.inline_data.data
-                
-                print(f"[Nano Banana] Image edited successfully! Size: {len(image_bytes)} bytes")
-                
-                # Apply aspect ratio through post-processing
-                image_bytes = resize_to_aspect_ratio(image_bytes, aspect_ratio)
-                
-                return image_bytes
+                # Use as_image() as per official documentation
+                try:
+                    image = part.as_image()
+                    # Convert PIL Image to bytes
+                    buffer = io.BytesIO()
+                    image.save(buffer, format='PNG')
+                    buffer.seek(0)
+                    image_bytes = buffer.getvalue()
+                    print(f"[Nano Banana] Image edited! Dimensions: {image.size}, Size: {len(image_bytes)} bytes")
+                    return image_bytes
+                except AttributeError:
+                    # Fallback to direct inline_data access
+                    image_bytes = part.inline_data.data
+                    print(f"[Nano Banana] Image edited! Size: {len(image_bytes)} bytes")
+                    return image_bytes
         
         raise Exception(f"No image found in response parts")
         
