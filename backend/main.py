@@ -42,7 +42,7 @@ async def root():
 
 @app.post("/api/generate-image")
 async def generate_image(
-    prompt: str = Form(...),
+    prompt: str = Form(default=""),
     aspect_ratio: str = Form(default="16:9"),
     image: UploadFile = File(None)
 ):
@@ -54,8 +54,12 @@ async def generate_image(
         
         job_id = str(uuid.uuid4())
         
+        # Validate: either prompt or image must be provided
+        if not prompt.strip() and not image:
+            raise HTTPException(status_code=400, detail="Either prompt or image must be provided")
+        
         # Generate image
-        if image:
+        if image and image.filename:
             # User uploaded image - read bytes directly
             try:
                 # Reset file pointer to beginning

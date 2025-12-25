@@ -50,17 +50,26 @@ imageInput.addEventListener('change', (e) => {
             imagePreview.innerHTML = `<img src="${e.target.result}" alt="Preview" style="max-width: 300px; border-radius: 8px; margin-top: 10px;">`;
         };
         reader.readAsDataURL(file);
+    } else {
+        imagePreview.innerHTML = '';
     }
-});
-
-// Font size slider
-fontSizeInput.addEventListener('input', (e) => {
-    fontSizeValue.textContent = e.target.value;
 });
 
 // Generate image
 imageForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    
+    // Validate: either prompt or image must be provided
+    const promptValue = document.getElementById('prompt').value.trim();
+    const imageFile = imageInput.files[0];
+    
+    if (!promptValue && !imageFile) {
+        const errorMsg = currentLang === 'en' 
+            ? 'Please provide either a description or upload an image'
+            : 'נא להזין תיאור או להעלות תמונה';
+        showError(errorMsg);
+        return;
+    }
     
     const formData = new FormData(imageForm);
     
