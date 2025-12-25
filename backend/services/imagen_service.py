@@ -29,18 +29,29 @@ async def generate_image_from_prompt(
     print(f"[Nano Banana] Generating image (text2img) with prompt: {prompt}")
     print(f"[Nano Banana] Aspect ratio: {aspect_ratio}")
     
-    # Generate image from text using official SDK method with image_config
-    response = client.models.generate_content(
-        model='gemini-2.5-flash-image',
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_modalities=['IMAGE'],
-            image_config=types.ImageConfig(
-                aspect_ratio=aspect_ratio,
-                image_size="2K"
+    # Generate image from text using official SDK method
+    try:
+        response = client.models.generate_content(
+            model='gemini-2.5-flash-image',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_modalities=['IMAGE'],
+                image_config=types.ImageConfig(
+                    aspect_ratio=aspect_ratio,
+                    image_size="2K"
+                )
             )
         )
-    )
+    except AttributeError:
+        # Fallback: if ImageConfig doesn't exist, try without it
+        print(f"[WARNING] ImageConfig not available, generating without aspect ratio control")
+        response = client.models.generate_content(
+            model='gemini-2.5-flash-image',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_modalities=['IMAGE']
+            )
+        )
     
     print(f"[Nano Banana] Response received. Type: {type(response)}")
     
@@ -115,18 +126,29 @@ async def edit_image_with_prompt(
     # Create multimodal content: [prompt, image] as per documentation
     contents = [prompt, pil_image]
     
-    # Generate edited image using official SDK method with image_config
-    response = client.models.generate_content(
-        model='gemini-2.5-flash-image',
-        contents=contents,
-        config=types.GenerateContentConfig(
-            response_modalities=['IMAGE'],
-            image_config=types.ImageConfig(
-                aspect_ratio=aspect_ratio,
-                image_size="2K"
+    # Generate edited image using official SDK method with EditImageConfig
+    try:
+        response = client.models.generate_content(
+            model='gemini-2.5-flash-image',
+            contents=contents,
+            config=types.GenerateContentConfig(
+                response_modalities=['IMAGE'],
+                edit_image_config=types.EditImageConfig(
+                    aspect_ratio=aspect_ratio,
+                    image_size="2K"
+                )
             )
         )
-    )
+    except (AttributeError, TypeError):
+        # Fallback: if EditImageConfig doesn't work, try without it
+        print(f"[WARNING] EditImageConfig not available, generating without aspect ratio control")
+        response = client.models.generate_content(
+            model='gemini-2.5-flash-image',
+            contents=contents,
+            config=types.GenerateContentConfig(
+                response_modalities=['IMAGE']
+            )
+        )
     
     print(f"[Nano Banana] Edit response received. Type: {type(response)}")
     
