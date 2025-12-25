@@ -17,6 +17,55 @@ else:
 
 AspectRatio = Literal["9:16", "16:9", "1:1"]
 
+
+def resize_to_aspect_ratio(image_bytes: bytes, aspect_ratio: AspectRatio) -> bytes:
+    """Resize image to match target aspect ratio by cropping and scaling"""
+    
+    # Target dimensions for each aspect ratio
+    target_dimensions = {
+        "16:9": (1920, 1080),   # Horizontal
+        "9:16": (1080, 1920),   # Vertical
+        "1:1": (1024, 1024)     # Square
+    }
+    
+    target_width, target_height = target_dimensions[aspect_ratio]
+    
+    # Load image
+    img = PILImage.open(io.BytesIO(image_bytes))
+    original_width, original_height = img.size
+    
+    print(f"[Resize] Original: {original_width}x{original_height} -> Target: {target_width}x{target_height}")
+    
+    # Calculate ratios
+    target_ratio = target_width / target_height
+    current_ratio = original_width / original_height
+    
+    # Crop to target aspect ratio first
+    if abs(current_ratio - target_ratio) > 0.01:  # Need to crop
+        if current_ratio > target_ratio:
+            # Wider than needed - crop width
+            new_width = int(original_height * target_ratio)
+            left = (original_width - new_width) // 2
+            img = img.crop((left, 0, left + new_width, original_height))
+        else:
+            # Taller than needed - crop height
+            new_height = int(original_width / target_ratio)
+            top = (original_height - new_height) // 2
+            img = img.crop((0, top, original_width, top + new_height))
+    
+    # Resize to target dimensions
+    if img.size != (target_width, target_height):
+        img = img.resize((target_width, target_height), PILImage.LANCZOS)
+    
+    print(f"[Resize] Final: {img.size}")
+    
+    # Convert to bytes
+    buffer = io.BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
 async def generate_image_from_prompt(
     prompt: str,
     aspect_ratio: AspectRatio = "16:9"
@@ -84,6 +133,10 @@ async def generate_image_from_prompt(
                 image_bytes = part.inline_data.data
                 
                 print(f"[Nano Banana] Image generated successfully! Size: {len(image_bytes)} bytes")
+                
+                # Apply aspect ratio through post-processing
+                image_bytes = resize_to_aspect_ratio(image_bytes, aspect_ratio)
+                
                 return image_bytes
         
         raise Exception(f"No image found in response parts")
@@ -180,6 +233,10 @@ async def edit_image_with_prompt(
                 image_bytes = part.inline_data.data
                 
                 print(f"[Nano Banana] Image edited successfully! Size: {len(image_bytes)} bytes")
+                
+                # Apply aspect ratio through post-processing
+                image_bytes = resize_to_aspect_ratio(image_bytes, aspect_ratio)
+                
                 return image_bytes
         
         raise Exception(f"No image found in response parts")
