@@ -76,10 +76,20 @@ async def generate_image_from_prompt(
     print(f"[Nano Banana] Generating image (text2img) with prompt: {prompt}")
     print(f"[Nano Banana] Aspect ratio: {aspect_ratio}")
     
+    # Add composition instructions based on aspect ratio
+    composition_instructions = {
+        "16:9": "Compose for wide horizontal landscape format. Center the subject with plenty of horizontal space on the sides.",
+        "9:16": "Compose for tall vertical portrait format. Position the subject to fill the vertical space naturally, suitable for mobile/story format. Vertical orientation, tall composition.",
+        "1:1": "Compose for square format. Center the subject with balanced spacing on all sides."
+    }
+    
+    enhanced_prompt = f"{prompt}. {composition_instructions.get(aspect_ratio, composition_instructions['16:9'])}"
+    print(f"[Nano Banana] Enhanced prompt: {enhanced_prompt}")
+    
     # Generate image from text using official SDK method
     response = client.models.generate_content(
         model='gemini-2.5-flash-image',
-        contents=prompt,
+        contents=enhanced_prompt,
         config=types.GenerateContentConfig(
             response_modalities=['IMAGE']
         )
@@ -162,8 +172,18 @@ async def edit_image_with_prompt(
     
     print(f"[Nano Banana] PIL Image loaded: {pil_image.size}, mode: {pil_image.mode}")
     
+    # Add composition instructions based on aspect ratio
+    composition_instructions = {
+        "16:9": "Compose for wide horizontal landscape format. Center the subject with plenty of horizontal space on the sides.",
+        "9:16": "Compose for tall vertical portrait format. Position the subject to fill the vertical space naturally, suitable for mobile/story format. Vertical orientation, tall composition.",
+        "1:1": "Compose for square format. Center the subject with balanced spacing on all sides."
+    }
+    
+    enhanced_prompt = f"{prompt}. {composition_instructions.get(aspect_ratio, composition_instructions['16:9'])}"
+    print(f"[Nano Banana] Enhanced prompt: {enhanced_prompt}")
+    
     # Create multimodal content: [prompt, image] as per documentation
-    contents = [prompt, pil_image]
+    contents = [enhanced_prompt, pil_image]
     
     # Generate edited image using official SDK method
     response = client.models.generate_content(
