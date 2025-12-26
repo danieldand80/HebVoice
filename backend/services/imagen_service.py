@@ -18,54 +18,6 @@ else:
 AspectRatio = Literal["9:16", "16:9", "1:1"]
 
 
-def resize_to_aspect_ratio(image_bytes: bytes, aspect_ratio: AspectRatio) -> bytes:
-    """Resize image to match target aspect ratio by cropping and scaling"""
-    
-    # Target dimensions for each aspect ratio
-    target_dimensions = {
-        "16:9": (1920, 1080),   # Horizontal
-        "9:16": (1080, 1920),   # Vertical
-        "1:1": (1024, 1024)     # Square
-    }
-    
-    target_width, target_height = target_dimensions[aspect_ratio]
-    
-    # Load image
-    img = PILImage.open(io.BytesIO(image_bytes))
-    original_width, original_height = img.size
-    
-    print(f"[Resize] Original: {original_width}x{original_height} -> Target: {target_width}x{target_height}")
-    
-    # Calculate ratios
-    target_ratio = target_width / target_height
-    current_ratio = original_width / original_height
-    
-    # Crop to target aspect ratio first
-    if abs(current_ratio - target_ratio) > 0.01:  # Need to crop
-        if current_ratio > target_ratio:
-            # Wider than needed - crop width
-            new_width = int(original_height * target_ratio)
-            left = (original_width - new_width) // 2
-            img = img.crop((left, 0, left + new_width, original_height))
-        else:
-            # Taller than needed - crop height
-            new_height = int(original_width / target_ratio)
-            top = (original_height - new_height) // 2
-            img = img.crop((0, top, original_width, top + new_height))
-    
-    # Resize to target dimensions
-    if img.size != (target_width, target_height):
-        img = img.resize((target_width, target_height), PILImage.LANCZOS)
-    
-    print(f"[Resize] Final: {img.size}")
-    
-    # Convert to bytes
-    buffer = io.BytesIO()
-    img.save(buffer, format='PNG')
-    buffer.seek(0)
-    return buffer.getvalue()
-
-
 async def generate_image_from_prompt(
     prompt: str,
     aspect_ratio: AspectRatio = "16:9"
@@ -78,56 +30,43 @@ async def generate_image_from_prompt(
     print(f"[Nano Banana] Generating image (text2img) with prompt: {prompt}")
     print(f"[Nano Banana] Aspect ratio: {aspect_ratio}")
     
-    # Generate image from text
-    response = client.models.generate_content(
-        model='gemini-2.5-flash-image',
-        contents=[prompt],
-        config=types.GenerateContentConfig(
-            response_modalities=['IMAGE']
+    # Use generate_images API (NOT generate_content) for native aspect_ratio support
+    response = client.models.generate_images(
+        model='imagen-3.0-generate-001',
+        prompt=prompt,
+        config=types.GenerateImagesConfig(
+            aspectRatio=aspect_ratio,
+            numberOfImages=1
         )
     )
     
     print(f"[Nano Banana] Response received. Type: {type(response)}")
     
-    # Extract image using as_image() method from documentation
+    # Extract image from GenerateImagesResponse
     try:
-        # Access parts through candidates[0].content.parts
-        if not hasattr(response, 'candidates') or not response.candidates:
-            raise Exception(f"No candidates in response")
+        if not response.generated_images or len(response.generated_images) == 0:
+            raise Exception("No images generated in response")
         
-        candidate = response.candidates[0]
+        generated_image = response.generated_images[0]
         
-        # Debug: log finish_reason and safety_ratings
-        if hasattr(candidate, 'finish_reason'):
-            print(f"[DEBUG] finish_reason: {candidate.finish_reason}")
-        if hasattr(candidate, 'safety_ratings'):
-            print(f"[DEBUG] safety_ratings: {candidate.safety_ratings}")
-        
-        if not hasattr(candidate, 'content') or not candidate.content:
-            # Check if blocked by safety filters
-            error_msg = f"No content in candidate. Finish reason: {getattr(candidate, 'finish_reason', 'unknown')}"
-            if hasattr(candidate, 'safety_ratings'):
-                error_msg += f"\nSafety ratings: {candidate.safety_ratings}"
-            raise Exception(error_msg)
-        
-        if not hasattr(candidate.content, 'parts') or not candidate.content.parts:
-            raise Exception(f"No parts in content")
-        
-        for part in candidate.content.parts:
-            if part.inline_data:
-                # Extract image bytes directly from inline_data
-                image_bytes = part.inline_data.data
-                print(f"[Nano Banana] Image generated! Size: {len(image_bytes)} bytes")
-                
-                # Apply aspect ratio through post-processing
-                image_bytes = resize_to_aspect_ratio(image_bytes, aspect_ratio)
-                return image_bytes
-        
-        raise Exception(f"No image found in response parts")
+        # Get PIL Image
+        if hasattr(generated_image, 'image'):
+            pil_img = generated_image.image
+            
+            # Convert PIL to bytes
+            buffer = io.BytesIO()
+            pil_img.save(buffer, format='PNG')
+            buffer.seek(0)
+            image_bytes = buffer.getvalue()
+            
+            print(f"[Nano Banana] Image generated! Size: {len(image_bytes)} bytes, dimensions: {pil_img.size}")
+            return image_bytes
+        else:
+            raise Exception("No image found in generated_image")
         
     except Exception as e:
         import traceback
-        raise Exception(f"Failed to extract image from Gemini response: {str(e)}\n\nTraceback: {traceback.format_exc()}")
+        raise Exception(f"Failed to extract image from generate_images response: {str(e)}\n\nTraceback: {traceback.format_exc()}")
 
 
 async def edit_image_with_prompt(
@@ -135,7 +74,7 @@ async def edit_image_with_prompt(
     prompt: str,
     aspect_ratio: AspectRatio = "16:9"
 ) -> bytes:
-    """Edit existing image using Gemini 2.5 Flash Image (Nano Banana) - img2img
+    """Edit existing image using Imagen API - img2img
     
     This function takes an existing image and modifies it based on text prompt.
     For example: "change background to modern shop" - keeps product, changes background.
@@ -144,74 +83,65 @@ async def edit_image_with_prompt(
     if not GOOGLE_API_KEY or not client:
         raise Exception("GOOGLE_API_KEY not set in environment")
     
-    print(f"[Nano Banana] Editing image (img2img) with prompt: {prompt}")
-    print(f"[Nano Banana] Aspect ratio: {aspect_ratio}")
-    print(f"[Nano Banana] Image bytes size: {len(image_bytes)}")
+    print(f"[Imagen] Editing image (img2img) with prompt: {prompt}")
+    print(f"[Imagen] Aspect ratio: {aspect_ratio}")
+    print(f"[Imagen] Image bytes size: {len(image_bytes)}")
     
     if len(image_bytes) == 0:
         raise Exception("Image bytes are empty! Cannot edit empty image.")
     
-    # Convert image bytes to PIL Image (according to documentation)
+    # Convert image bytes to PIL Image
     try:
         pil_image = PILImage.open(io.BytesIO(image_bytes))
     except Exception as e:
         raise Exception(f"Failed to open image with PIL: {str(e)}")
     
-    print(f"[Nano Banana] PIL Image loaded: {pil_image.size}, mode: {pil_image.mode}")
+    print(f"[Imagen] PIL Image loaded: {pil_image.size}, mode: {pil_image.mode}")
     
-    # Create multimodal content: [prompt, image] as per documentation
-    contents = [prompt, pil_image]
-    
-    # Generate edited image
-    response = client.models.generate_content(
-        model='gemini-2.5-flash-image',
-        contents=contents,
-        config=types.GenerateContentConfig(
-            response_modalities=['IMAGE']
+    # Use edit_image API (NOT generate_content) for native aspect_ratio support
+    response = client.models.edit_image(
+        model='imagen-3.0-capability-001',
+        prompt=prompt,
+        reference_images=[
+            types.RawReferenceImage(
+                referenceImage=pil_image,
+                referenceType='RAW'
+            )
+        ],
+        config=types.EditImageConfig(
+            aspectRatio=aspect_ratio,
+            numberOfImages=1,
+            editMode='EDIT_MODE_INPAINT_INSERTION'
         )
     )
     
-    print(f"[Nano Banana] Edit response received. Type: {type(response)}")
+    print(f"[Imagen] Edit response received. Type: {type(response)}")
     
-    # Extract image using as_image() method from documentation
+    # Extract image from EditImageResponse
     try:
-        # Access parts through candidates[0].content.parts
-        if not hasattr(response, 'candidates') or not response.candidates:
-            raise Exception(f"No candidates in response")
+        if not response.generated_images or len(response.generated_images) == 0:
+            raise Exception("No images generated in edit response")
         
-        candidate = response.candidates[0]
+        generated_image = response.generated_images[0]
         
-        # Debug: log finish_reason and safety_ratings
-        if hasattr(candidate, 'finish_reason'):
-            print(f"[DEBUG] finish_reason: {candidate.finish_reason}")
-        if hasattr(candidate, 'safety_ratings'):
-            print(f"[DEBUG] safety_ratings: {candidate.safety_ratings}")
-        
-        if not hasattr(candidate, 'content') or not candidate.content:
-            # Check if blocked by safety filters
-            error_msg = f"No content in candidate. Finish reason: {getattr(candidate, 'finish_reason', 'unknown')}"
-            if hasattr(candidate, 'safety_ratings'):
-                error_msg += f"\nSafety ratings: {candidate.safety_ratings}"
-            raise Exception(error_msg)
-        
-        if not hasattr(candidate.content, 'parts') or not candidate.content.parts:
-            raise Exception(f"No parts in content")
-        
-        for part in candidate.content.parts:
-            if part.inline_data:
-                # Extract image bytes directly from inline_data
-                image_bytes = part.inline_data.data
-                print(f"[Nano Banana] Image edited! Size: {len(image_bytes)} bytes")
-                
-                # Apply aspect ratio through post-processing
-                image_bytes = resize_to_aspect_ratio(image_bytes, aspect_ratio)
-                return image_bytes
-        
-        raise Exception(f"No image found in response parts")
+        # Get PIL Image
+        if hasattr(generated_image, 'image'):
+            pil_img = generated_image.image
+            
+            # Convert PIL to bytes
+            buffer = io.BytesIO()
+            pil_img.save(buffer, format='PNG')
+            buffer.seek(0)
+            image_bytes = buffer.getvalue()
+            
+            print(f"[Imagen] Image edited! Size: {len(image_bytes)} bytes, dimensions: {pil_img.size}")
+            return image_bytes
+        else:
+            raise Exception("No image found in generated_image")
         
     except Exception as e:
         import traceback
-        raise Exception(f"Failed to extract edited image from Gemini response: {str(e)}\n\nTraceback: {traceback.format_exc()}")
+        raise Exception(f"Failed to extract image from edit_image response: {str(e)}\n\nTraceback: {traceback.format_exc()}")
 
 
 

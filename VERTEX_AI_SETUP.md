@@ -310,3 +310,5 @@ USE_VERTEX_AI=true  # Включи в Railway Variables
 - https://cloud.google.com/vertex-ai/docs
 - https://cloud.google.com/vertex-ai/generative-ai/docs/image/generate-images
 
+
+
