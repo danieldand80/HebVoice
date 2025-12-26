@@ -296,68 +296,68 @@ async def edit_image_with_prompt(
             
             for part in candidate.content.parts:
                 if part.inline_data:
-                image_bytes = part.inline_data.data
-                
-                # Check actual image dimensions from API
-                try:
-                    pil_img = PILImage.open(io.BytesIO(image_bytes))
-                    api_width, api_height = pil_img.size
-                    api_ratio = api_width / api_height
-                    print(f"[Nano Banana] Edited image from API: {api_width}x{api_height} (ratio: {api_ratio:.2f})")
+                    image_bytes = part.inline_data.data
                     
-                    # Define target ratios
-                    target_ratios = {
-                        "16:9": 16/9,    # ~1.78
-                        "9:16": 9/16,    # ~0.56
-                        "1:1": 1.0       # 1.0
-                    }
-                    
-                    target_ratio = target_ratios[aspect_ratio]
-                    
-                    # Check if API returned correct aspect ratio (tolerance 0.1)
-                    if abs(api_ratio - target_ratio) > 0.1:
-                        print(f"[WARNING] API ignored aspectRatio! Expected {aspect_ratio} ({target_ratio:.2f}), got {api_ratio:.2f}")
-                        print(f"[Fallback] Applying post-processing to fix aspect ratio...")
+                    # Check actual image dimensions from API
+                    try:
+                        pil_img = PILImage.open(io.BytesIO(image_bytes))
+                        api_width, api_height = pil_img.size
+                        api_ratio = api_width / api_height
+                        print(f"[Nano Banana] Edited image from API: {api_width}x{api_height} (ratio: {api_ratio:.2f})")
                         
-                        # Apply post-processing to fix aspect ratio
-                        target_dims = {
-                            "16:9": (1920, 1080),
-                            "9:16": (1080, 1920),
-                            "1:1": (1024, 1024)
+                        # Define target ratios
+                        target_ratios = {
+                            "16:9": 16/9,    # ~1.78
+                            "9:16": 9/16,    # ~0.56
+                            "1:1": 1.0       # 1.0
                         }
-                        target_width, target_height = target_dims[aspect_ratio]
                         
-                        # Crop to target aspect ratio
-                        if api_ratio > target_ratio:
-                            # Wider - crop width
-                            new_width = int(api_height * target_ratio)
-                            left = (api_width - new_width) // 2
-                            pil_img = pil_img.crop((left, 0, left + new_width, api_height))
+                        target_ratio = target_ratios[aspect_ratio]
+                        
+                        # Check if API returned correct aspect ratio (tolerance 0.1)
+                        if abs(api_ratio - target_ratio) > 0.1:
+                            print(f"[WARNING] API ignored aspectRatio! Expected {aspect_ratio} ({target_ratio:.2f}), got {api_ratio:.2f}")
+                            print(f"[Fallback] Applying post-processing to fix aspect ratio...")
+                            
+                            # Apply post-processing to fix aspect ratio
+                            target_dims = {
+                                "16:9": (1920, 1080),
+                                "9:16": (1080, 1920),
+                                "1:1": (1024, 1024)
+                            }
+                            target_width, target_height = target_dims[aspect_ratio]
+                            
+                            # Crop to target aspect ratio
+                            if api_ratio > target_ratio:
+                                # Wider - crop width
+                                new_width = int(api_height * target_ratio)
+                                left = (api_width - new_width) // 2
+                                pil_img = pil_img.crop((left, 0, left + new_width, api_height))
+                            else:
+                                # Taller - crop height
+                                new_height = int(api_width / target_ratio)
+                                top = (api_height - new_height) // 2
+                                pil_img = pil_img.crop((0, top, api_width, top + new_height))
+                            
+                            # Resize to target dimensions
+                            pil_img = pil_img.resize((target_width, target_height), PILImage.LANCZOS)
+                            
+                            # Convert back to bytes
+                            buffer = io.BytesIO()
+                            pil_img.save(buffer, format='PNG')
+                            buffer.seek(0)
+                            image_bytes = buffer.getvalue()
+                            
+                            print(f"[Fallback] Fixed dimensions: {pil_img.size}")
                         else:
-                            # Taller - crop height
-                            new_height = int(api_width / target_ratio)
-                            top = (api_height - new_height) // 2
-                            pil_img = pil_img.crop((0, top, api_width, top + new_height))
+                            print(f"[SUCCESS] API returned correct aspect ratio!")
                         
-                        # Resize to target dimensions
-                        pil_img = pil_img.resize((target_width, target_height), PILImage.LANCZOS)
-                        
-                        # Convert back to bytes
-                        buffer = io.BytesIO()
-                        pil_img.save(buffer, format='PNG')
-                        buffer.seek(0)
-                        image_bytes = buffer.getvalue()
-                        
-                        print(f"[Fallback] Fixed dimensions: {pil_img.size}")
-                    else:
-                        print(f"[SUCCESS] API returned correct aspect ratio!")
+                    except Exception as e:
+                        print(f"[WARNING] Could not verify dimensions: {e}")
                     
-                except Exception as e:
-                    print(f"[WARNING] Could not verify dimensions: {e}")
-                
-                print(f"[Nano Banana] Edited image {idx+1} final size: {len(image_bytes)} bytes")
-                all_images.append(image_bytes)
-                break  # Found image in this response
+                    print(f"[Nano Banana] Edited image {idx+1} final size: {len(image_bytes)} bytes")
+                    all_images.append(image_bytes)
+                    break  # Found image in this response
         
         except Exception as e:
             print(f"[WARNING] Response {idx+1} failed: {e}")
