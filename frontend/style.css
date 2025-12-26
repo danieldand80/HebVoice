@@ -301,6 +301,91 @@ small {
     text-align: center;
 }
 
+/* Number of Images Selector */
+.num-images-selector {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.num-option {
+    flex: 1;
+    min-width: 60px;
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.num-option:hover {
+    border-color: #667eea;
+    background: #f5f5f5;
+}
+
+.num-option input[type="radio"] {
+    width: auto;
+}
+
+.num-option input[type="radio"]:checked + span {
+    color: #667eea;
+    font-weight: 600;
+}
+
+/* Image Grid for Multiple Results */
+.images-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 30px;
+}
+
+.image-item {
+    border: 3px solid transparent;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+}
+
+.image-item:hover {
+    border-color: #667eea;
+    transform: scale(1.02);
+}
+
+.image-item.selected {
+    border-color: #4caf50;
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.3);
+}
+
+.image-item img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.image-item .select-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #4caf50;
+    color: white;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+    display: none;
+}
+
+.image-item.selected .select-badge {
+    display: block;
+}
+
 @media (max-width: 768px) {
     header h1 {
         font-size: 1.8rem;

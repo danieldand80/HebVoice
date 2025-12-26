@@ -44,15 +44,18 @@ async def root():
 async def generate_image(
     prompt: str = Form(default=""),
     aspect_ratio: str = Form(default="16:9"),
+    num_images: int = Form(default=1),
     image: UploadFile = File(None)
 ):
-    """Generate image using Imagen (Nano Banana)"""
+    """Generate image(s) using Imagen (Nano Banana)"""
     try:
         # Check if Google AI API is configured
         if not os.getenv("GOOGLE_API_KEY"):
             raise HTTPException(status_code=500, detail="GOOGLE_API_KEY not configured")
         
-        job_id = str(uuid.uuid4())
+        # Validate num_images
+        if num_images < 1 or num_images > 4:
+            num_images = 1
         
         # Validate: either prompt or image must be provided
         if not prompt.strip() and not image:
@@ -85,11 +88,11 @@ async def generate_image(
                 if prompt and prompt.strip():
                     # Edit the uploaded image based on prompt
                     print(f"[DEBUG] Editing image with prompt: {prompt[:50]}...")
-                    image_bytes = await edit_image_with_prompt(uploaded_image_bytes, prompt, aspect_ratio)
+                    image_list = await edit_image_with_prompt(uploaded_image_bytes, prompt, aspect_ratio, num_images)
                 else:
                     # No prompt - use uploaded image as-is
                     print(f"[DEBUG] Using uploaded image as-is (no prompt)")
-                    image_bytes = uploaded_image_bytes
+                    image_list = [uploaded_image_bytes]
             except HTTPException:
                 raise
             except Exception as e:
@@ -101,32 +104,45 @@ async def generate_image(
             if not prompt or not prompt.strip():
                 raise HTTPException(status_code=400, detail="Either image or prompt is required")
             
-            image_bytes = await generate_image_from_prompt(prompt, aspect_ratio)
+            image_list = await generate_image_from_prompt(prompt, aspect_ratio, num_images)
         
-        # Save generated image
-        output_path = OUTPUT_DIR / f"{job_id}.png"
-        with open(output_path, "wb") as f:
-            f.write(image_bytes)
+        # Save all generated images
+        generated_images = []
+        for idx, image_bytes in enumerate(image_list):
+            image_id = f"{str(uuid.uuid4())[:8]}_{idx}"
+            output_path = OUTPUT_DIR / f"{image_id}.png"
+            
+            with open(output_path, "wb") as f:
+                f.write(image_bytes)
+            
+            # Get image dimensions
+            from PIL import Image
+            import io
+            img = Image.open(io.BytesIO(image_bytes))
+            width, height = img.size
+            
+            # Return image as base64 for preview
+            image_base64 = base64.b64encode(image_bytes).decode()
+            
+            generated_images.append({
+                "image_id": image_id,
+                "image_url": f"/api/image/{image_id}",
+                "image_base64": f"data:image/png;base64,{image_base64}",
+                "width": width,
+                "height": height
+            })
         
-        # Get image dimensions for text positioning
-        from PIL import Image
-        import io
-        img = Image.open(io.BytesIO(image_bytes))
-        width, height = img.size
-        
-        # Suggest text positions
-        positions = await suggest_text_positions(width, height, aspect_ratio)
-        
-        # Return image as base64 for preview
-        image_base64 = base64.b64encode(image_bytes).decode()
+        # Use first image for text positioning suggestions (legacy)
+        if generated_images:
+            first_img = generated_images[0]
+            positions = await suggest_text_positions(first_img["width"], first_img["height"], aspect_ratio)
+        else:
+            positions = []
         
         return {
             "success": True,
-            "image_id": job_id,
-            "image_url": f"/api/image/{job_id}",
-            "image_base64": f"data:image/png;base64,{image_base64}",
-            "width": width,
-            "height": height,
+            "images": generated_images,
+            "count": len(generated_images),
             "suggested_positions": positions
         }
         

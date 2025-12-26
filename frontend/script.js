@@ -101,15 +101,22 @@ imageForm.addEventListener('submit', async (e) => {
         
         const data = await response.json();
         
-        currentImageId = data.image_id;
-        currentImageData = data;
-        
-        // Show step 2
-        step1.style.display = 'none';
-        step2.style.display = 'block';
-        
-        // Display generated image
-        generatedImage.src = data.image_base64;
+        // Check if multiple images or single image
+        if (data.images && data.images.length > 0) {
+            // Multiple images - show grid
+            displayImagesGrid(data.images);
+        } else {
+            // Legacy single image support
+            currentImageId = data.image_id;
+            currentImageData = data;
+            
+            // Show step 2
+            step1.style.display = 'none';
+            step2.style.display = 'block';
+            
+            // Display generated image
+            generatedImage.src = data.image_base64;
+        }
         
         showSuccess(t('imageCreatedSuccess'));
         
@@ -122,11 +129,52 @@ imageForm.addEventListener('submit', async (e) => {
     }
 });
 
-// Edit prompt - return to step 1
-editBtn.addEventListener('click', () => {
-    step2.style.display = 'none';
-    step1.style.display = 'block';
-    hideMessages();
+// Edit prompt - return to step 1 with selected image
+editBtn.addEventListener('click', async () => {
+    if (!currentImageId || !currentImageData) {
+        showError(currentLang === 'en' ? 'No image selected' : 'לא נבחרה תמונה');
+        return;
+    }
+    
+    // Download selected image and set it as uploaded image
+    try {
+        const response = await fetch(`/api/download/${currentImageId}`);
+        const blob = await response.blob();
+        
+        // Create File from blob
+        const file = new File([blob], `${currentImageId}.png`, { type: 'image/png' });
+        
+        // Create DataTransfer to set files
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        imageInput.files = dataTransfer.files;
+        
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            imagePreview.innerHTML = `<img src="${e.target.result}" alt="Preview" style="max-width: 300px; border-radius: 8px; margin-top: 10px;">`;
+            removeImageBtn.style.display = 'flex';
+        };
+        reader.readAsDataURL(file);
+        
+        // Return to step 1
+        step2.style.display = 'none';
+        step1.style.display = 'block';
+        hideMessages();
+        
+        // Hide grid if it exists
+        const grid = document.getElementById('imagesGrid');
+        if (grid) {
+            grid.style.display = 'none';
+        }
+        
+    } catch (error) {
+        console.error('Failed to load image for editing:', error);
+        // Fallback: just return to step 1
+        step2.style.display = 'none';
+        step1.style.display = 'block';
+        hideMessages();
+    }
 });
 
 // Download image
@@ -139,7 +187,30 @@ downloadBtn.addEventListener('click', () => {
 
 // Start over
 startOverBtn.addEventListener('click', () => {
-    location.reload();
+    // Reset form
+    imageForm.reset();
+    imagePreview.innerHTML = '';
+    removeImageBtn.style.display = 'none';
+    
+    // Hide step 2, show step 1
+    step2.style.display = 'none';
+    step1.style.display = 'block';
+    
+    // Hide grid if exists
+    const grid = document.getElementById('imagesGrid');
+    if (grid) {
+        grid.style.display = 'none';
+        grid.innerHTML = '';
+    }
+    
+    // Show single image again
+    generatedImage.style.display = 'block';
+    
+    // Reset current image data
+    currentImageId = null;
+    currentImageData = null;
+    
+    hideMessages();
 });
 
 // Helper functions
@@ -166,6 +237,81 @@ function showSuccess(message) {
 function hideMessages() {
     errorDiv.style.display = 'none';
     successDiv.style.display = 'none';
+}
+
+// Display multiple images in grid
+function displayImagesGrid(images) {
+    // Hide step 1, show step 2
+    step1.style.display = 'none';
+    step2.style.display = 'block';
+    
+    // Check if grid exists, if not create it
+    let grid = document.getElementById('imagesGrid');
+    if (!grid) {
+        // Create grid container before the single image
+        grid = document.createElement('div');
+        grid.id = 'imagesGrid';
+        grid.className = 'images-grid';
+        generatedImage.parentNode.insertBefore(grid, generatedImage);
+        
+        // Hide single image display
+        generatedImage.style.display = 'none';
+    }
+    
+    // Clear grid
+    grid.innerHTML = '';
+    
+    // Add each image to grid
+    images.forEach((img, index) => {
+        const imageItem = document.createElement('div');
+        imageItem.className = 'image-item';
+        imageItem.dataset.imageId = img.image_id;
+        imageItem.dataset.imageData = JSON.stringify(img);
+        
+        const imgElement = document.createElement('img');
+        imgElement.src = img.image_base64;
+        imgElement.alt = `Generated image ${index + 1}`;
+        
+        const badge = document.createElement('div');
+        badge.className = 'select-badge';
+        badge.textContent = currentLang === 'en' ? 'Selected' : 'נבחר';
+        
+        imageItem.appendChild(imgElement);
+        imageItem.appendChild(badge);
+        
+        // Click handler to select image
+        imageItem.addEventListener('click', () => selectImage(imageItem));
+        
+        grid.appendChild(imageItem);
+    });
+    
+    // Auto-select first image
+    if (images.length > 0) {
+        const firstItem = grid.querySelector('.image-item');
+        selectImage(firstItem);
+    }
+    
+    // Show grid
+    grid.style.display = 'grid';
+}
+
+// Select an image from grid
+function selectImage(imageItem) {
+    // Remove selected class from all items
+    document.querySelectorAll('.image-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+    
+    // Add selected class to clicked item
+    imageItem.classList.add('selected');
+    
+    // Update current image data
+    const imageData = JSON.parse(imageItem.dataset.imageData);
+    currentImageId = imageData.image_id;
+    currentImageData = imageData;
+    
+    // Also update the single image display (hidden but used for download/edit)
+    generatedImage.src = imageData.image_base64;
 }
 
 // Language switching

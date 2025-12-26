@@ -23,53 +23,102 @@ else:
 AspectRatio = Literal["9:16", "16:9", "1:1"]
 
 
+def get_user_friendly_error(finish_reason, safety_ratings=None, context="generate"):
+    """Convert API errors to user-friendly messages"""
+    
+    if 'SAFETY' in str(finish_reason):
+        return "Please use English language in your prompt and avoid inappropriate content"
+    elif finish_reason == 'MAX_TOKENS':
+        return "Prompt is too long. Please use a shorter description"
+    elif finish_reason == 'STOP':
+        # Normal finish but no image - likely non-English prompt
+        return "Please write your prompt in English only (not Hebrew/Russian/etc)"
+    else:
+        return f"Could not {context} image. Please use English language in your prompt"
+
+
 async def generate_image_from_prompt(
     prompt: str,
-    aspect_ratio: AspectRatio = "16:9"
-) -> bytes:
-    """Generate image using Gemini 2.5 Flash Image (Nano Banana) - text2img"""
+    aspect_ratio: AspectRatio = "16:9",
+    num_images: int = 1
+) -> list[bytes]:
+    """Generate images using Gemini 2.5 Flash Image (Nano Banana) - text2img
+    
+    Args:
+        prompt: Text description in English
+        aspect_ratio: Image aspect ratio (16:9, 9:16, 1:1)
+        num_images: Number of images to generate (1-4)
+    
+    Returns:
+        List of image bytes
+    """
     
     if not GOOGLE_API_KEY or not client:
         raise Exception("GOOGLE_API_KEY not set in environment")
     
-    print(f"[Nano Banana] Generating image (text2img) with prompt: {prompt}")
+    # Validate prompt
+    if not prompt or prompt.strip() == "":
+        raise Exception("Please write a prompt in English to generate image")
+    
+    # Validate num_images
+    if num_images < 1 or num_images > 4:
+        num_images = 1
+    
+    print(f"[Nano Banana] Generating {num_images} image(s) (text2img) with prompt: {prompt}")
     print(f"[Nano Banana] Aspect ratio: {aspect_ratio}")
     
-    # Use generate_content with imageConfig for native aspect_ratio support (SDK 1.56.0+)
-    response = client.models.generate_content(
-        model='gemini-2.5-flash-image',
-        contents=[prompt],
-        config=types.GenerateContentConfig(
-            imageConfig=types.ImageConfig(
-                aspectRatio=aspect_ratio
+    # Generate multiple images in parallel
+    import asyncio
+    
+    async def generate_single():
+        # Use generate_content with imageConfig for native aspect_ratio support (SDK 1.56.0+)
+        response = client.models.generate_content(
+            model='gemini-2.5-flash-image',
+            contents=[prompt],
+            config=types.GenerateContentConfig(
+                imageConfig=types.ImageConfig(
+                    aspectRatio=aspect_ratio
+                )
             )
         )
-    )
+        return response
     
-    print(f"[Nano Banana] Response received. Type: {type(response)}")
+    # Generate all images in parallel
+    responses = await asyncio.gather(*[generate_single() for _ in range(num_images)])
     
-    # Extract image from response
-    try:
-        if not hasattr(response, 'candidates') or not response.candidates:
-            raise Exception("No candidates in response")
+    print(f"[Nano Banana] {len(responses)} responses received")
+    
+    # Extract images from all responses
+    all_images = []
+    
+    for idx, response in enumerate(responses):
+        print(f"[Nano Banana] Processing response {idx+1}/{len(responses)}. Type: {type(response)}")
         
-        candidate = response.candidates[0]
-        
-        if hasattr(candidate, 'finish_reason'):
-            print(f"[DEBUG] finish_reason: {candidate.finish_reason}")
-        if hasattr(candidate, 'safety_ratings'):
-            print(f"[DEBUG] safety_ratings: {candidate.safety_ratings}")
-        
-        if not hasattr(candidate, 'content') or not candidate.content:
-            error_msg = f"No content. Finish reason: {getattr(candidate, 'finish_reason', 'unknown')}"
+        # Extract image from response
+        try:
+            if not hasattr(response, 'candidates') or not response.candidates:
+                print(f"[WARNING] Response {idx+1}: No candidates, skipping")
+                continue
+            
+            candidate = response.candidates[0]
+            
+            finish_reason = getattr(candidate, 'finish_reason', 'unknown')
+            safety_ratings = getattr(candidate, 'safety_ratings', None)
+            
+            if hasattr(candidate, 'finish_reason'):
+                print(f"[DEBUG] Response {idx+1} finish_reason: {candidate.finish_reason}")
             if hasattr(candidate, 'safety_ratings'):
-                error_msg += f"\nSafety ratings: {candidate.safety_ratings}"
-            raise Exception(error_msg)
-        
-        if not hasattr(candidate.content, 'parts') or not candidate.content.parts:
-            raise Exception("No parts in content")
-        
-        for part in candidate.content.parts:
+                print(f"[DEBUG] Response {idx+1} safety_ratings: {candidate.safety_ratings}")
+            
+            if not hasattr(candidate, 'content') or not candidate.content:
+                print(f"[WARNING] Response {idx+1}: No content (reason: {finish_reason}), skipping")
+                continue
+            
+            if not hasattr(candidate.content, 'parts') or not candidate.content.parts:
+                print(f"[WARNING] Response {idx+1}: No parts, skipping")
+                continue
+            
+            for part in candidate.content.parts:
             if part.inline_data:
                 image_bytes = part.inline_data.data
                 
@@ -130,36 +179,61 @@ async def generate_image_from_prompt(
                 except Exception as e:
                     print(f"[WARNING] Could not verify dimensions: {e}")
                 
-                print(f"[Nano Banana] Final image size: {len(image_bytes)} bytes")
-                return image_bytes
+                print(f"[Nano Banana] Image {idx+1} final size: {len(image_bytes)} bytes")
+                all_images.append(image_bytes)
+                break  # Found image in this response
         
-        raise Exception("No image found in response parts")
-        
-    except Exception as e:
-        import traceback
-        raise Exception(f"Failed to extract image: {str(e)}\n\nTraceback: {traceback.format_exc()}")
+        except Exception as e:
+            print(f"[WARNING] Response {idx+1} failed: {e}")
+            continue
+    
+    # Check if we got at least one image
+    if len(all_images) == 0:
+        raise Exception("Please write your prompt in English only (Hebrew/Russian/other languages are not supported)")
+    
+    print(f"[Nano Banana] Successfully generated {len(all_images)}/{num_images} image(s)")
+    return all_images
 
 
 async def edit_image_with_prompt(
     image_bytes: bytes,
     prompt: str,
-    aspect_ratio: AspectRatio = "16:9"
-) -> bytes:
+    aspect_ratio: AspectRatio = "16:9",
+    num_images: int = 1
+) -> list[bytes]:
     """Edit existing image using Gemini 2.5 Flash Image (Nano Banana) - img2img
     
     This function takes an existing image and modifies it based on text prompt.
     For example: "change background to modern shop" - keeps product, changes background.
+    
+    Args:
+        image_bytes: Original image bytes
+        prompt: Edit instruction in English
+        aspect_ratio: Output aspect ratio (16:9, 9:16, 1:1)
+        num_images: Number of variations to generate (1-4)
+    
+    Returns:
+        List of edited image bytes
     """
     
     if not GOOGLE_API_KEY or not client:
         raise Exception("GOOGLE_API_KEY not set in environment")
     
-    print(f"[Nano Banana] Editing image (img2img) with prompt: {prompt}")
-    print(f"[Nano Banana] Aspect ratio: {aspect_ratio}")
-    print(f"[Nano Banana] Image bytes size: {len(image_bytes)}")
+    # Validate prompt
+    if not prompt or prompt.strip() == "":
+        raise Exception("Please write a prompt in English to edit image")
     
     if len(image_bytes) == 0:
-        raise Exception("Image bytes are empty!")
+        raise Exception("Please upload an image")
+    
+    # Validate num_images
+    if num_images < 1 or num_images > 4:
+        num_images = 1
+    
+    print(f"[Nano Banana] Editing image (img2img) - generating {num_images} variation(s)")
+    print(f"[Nano Banana] Prompt: {prompt}")
+    print(f"[Nano Banana] Aspect ratio: {aspect_ratio}")
+    print(f"[Nano Banana] Image bytes size: {len(image_bytes)}")
     
     # Convert to PIL Image
     try:
@@ -169,41 +243,58 @@ async def edit_image_with_prompt(
     
     print(f"[Nano Banana] PIL Image loaded: {pil_image.size}, mode: {pil_image.mode}")
     
-    # Use generate_content with image + prompt and imageConfig (SDK 1.56.0+)
-    response = client.models.generate_content(
-        model='gemini-2.5-flash-image',
-        contents=[prompt, pil_image],
-        config=types.GenerateContentConfig(
-            imageConfig=types.ImageConfig(
-                aspectRatio=aspect_ratio
+    # Generate multiple variations in parallel
+    import asyncio
+    
+    async def edit_single():
+        # Use generate_content with image + prompt and imageConfig (SDK 1.56.0+)
+        response = client.models.generate_content(
+            model='gemini-2.5-flash-image',
+            contents=[prompt, pil_image],
+            config=types.GenerateContentConfig(
+                imageConfig=types.ImageConfig(
+                    aspectRatio=aspect_ratio
+                )
             )
         )
-    )
+        return response
     
-    print(f"[Nano Banana] Edit response received. Type: {type(response)}")
+    # Generate all variations in parallel
+    responses = await asyncio.gather(*[edit_single() for _ in range(num_images)])
     
-    # Extract image from response
-    try:
-        if not hasattr(response, 'candidates') or not response.candidates:
-            raise Exception("No candidates in response")
+    print(f"[Nano Banana] {len(responses)} edit responses received")
+    
+    # Extract images from all responses
+    all_images = []
+    
+    for idx, response in enumerate(responses):
+        print(f"[Nano Banana] Processing edit response {idx+1}/{len(responses)}. Type: {type(response)}")
         
-        candidate = response.candidates[0]
-        
-        if hasattr(candidate, 'finish_reason'):
-            print(f"[DEBUG] finish_reason: {candidate.finish_reason}")
-        if hasattr(candidate, 'safety_ratings'):
-            print(f"[DEBUG] safety_ratings: {candidate.safety_ratings}")
-        
-        if not hasattr(candidate, 'content') or not candidate.content:
-            error_msg = f"No content. Finish reason: {getattr(candidate, 'finish_reason', 'unknown')}"
+        # Extract image from response
+        try:
+            if not hasattr(response, 'candidates') or not response.candidates:
+                print(f"[WARNING] Response {idx+1}: No candidates, skipping")
+                continue
+            
+            candidate = response.candidates[0]
+            
+            finish_reason = getattr(candidate, 'finish_reason', 'unknown')
+            safety_ratings = getattr(candidate, 'safety_ratings', None)
+            
+            if hasattr(candidate, 'finish_reason'):
+                print(f"[DEBUG] Response {idx+1} finish_reason: {candidate.finish_reason}")
             if hasattr(candidate, 'safety_ratings'):
-                error_msg += f"\nSafety ratings: {candidate.safety_ratings}"
-            raise Exception(error_msg)
-        
-        if not hasattr(candidate.content, 'parts') or not candidate.content.parts:
-            raise Exception("No parts in content")
-        
-        for part in candidate.content.parts:
+                print(f"[DEBUG] Response {idx+1} safety_ratings: {candidate.safety_ratings}")
+            
+            if not hasattr(candidate, 'content') or not candidate.content:
+                print(f"[WARNING] Response {idx+1}: No content (reason: {finish_reason}), skipping")
+                continue
+            
+            if not hasattr(candidate.content, 'parts') or not candidate.content.parts:
+                print(f"[WARNING] Response {idx+1}: No parts, skipping")
+                continue
+            
+            for part in candidate.content.parts:
             if part.inline_data:
                 image_bytes = part.inline_data.data
                 
@@ -264,14 +355,20 @@ async def edit_image_with_prompt(
                 except Exception as e:
                     print(f"[WARNING] Could not verify dimensions: {e}")
                 
-                print(f"[Nano Banana] Final edited image size: {len(image_bytes)} bytes")
-                return image_bytes
+                print(f"[Nano Banana] Edited image {idx+1} final size: {len(image_bytes)} bytes")
+                all_images.append(image_bytes)
+                break  # Found image in this response
         
-        raise Exception("No image found in response parts")
-        
-    except Exception as e:
-        import traceback
-        raise Exception(f"Failed to extract image: {str(e)}\n\nTraceback: {traceback.format_exc()}")
+        except Exception as e:
+            print(f"[WARNING] Response {idx+1} failed: {e}")
+            continue
+    
+    # Check if we got at least one image
+    if len(all_images) == 0:
+        raise Exception("Please write your prompt in English only (Hebrew/Russian/other languages are not supported)")
+    
+    print(f"[Nano Banana] Successfully edited {len(all_images)}/{num_images} variation(s)")
+    return all_images
 
 
 
