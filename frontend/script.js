@@ -684,6 +684,13 @@ applyTextBtn.addEventListener('click', async () => {
         formData.append('stroke_color', strokeRGBA);
         formData.append('stroke_width', outlineWidth.value);
         formData.append('bold', boldFont.checked);
+        // Send canvas dimensions for proper scaling
+        formData.append('canvas_width', textCanvas.width);
+        formData.append('canvas_height', textCanvas.height);
+        
+        console.log('[Apply Text] Canvas size:', textCanvas.width, 'x', textCanvas.height);
+        console.log('[Apply Text] Font size:', fontSize.value);
+        console.log('[Apply Text] Position:', textPosition);
         
         const response = await fetch('/api/add-text', {
             method: 'POST',

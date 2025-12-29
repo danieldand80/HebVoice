@@ -221,7 +221,9 @@ async def add_text_endpoint(
     font_color: str = Form(default="255,255,255,255"),
     stroke_color: str = Form(default="0,0,0,255"),
     stroke_width: int = Form(default=2),
-    bold: bool = Form(default=False)
+    bold: bool = Form(default=False),
+    canvas_width: int = Form(default=0),
+    canvas_height: int = Form(default=0)
 ):
     """Add Hebrew text to generated image"""
     try:
@@ -240,6 +242,24 @@ async def add_text_endpoint(
         except:
             font_rgba = (255, 255, 255, 255)
             stroke_rgba = (0, 0, 0, 255)
+        
+        # Check actual image size vs canvas size for scaling
+        from PIL import Image as PILImage
+        import io
+        img_check = PILImage.open(io.BytesIO(image_bytes))
+        actual_width, actual_height = img_check.size
+        
+        # Scale coordinates and font size if canvas size differs
+        if canvas_width > 0 and canvas_width != actual_width:
+            scale = actual_width / canvas_width
+            x = int(x * scale)
+            y = int(y * scale)
+            font_size = int(font_size * scale)
+            stroke_width = int(stroke_width * scale)
+            print(f"[Text Overlay] Scaling: canvas={canvas_width}x{canvas_height}, actual={actual_width}x{actual_height}, scale={scale:.2f}")
+            print(f"[Text Overlay] Scaled: pos=({x},{y}), font_size={font_size}, stroke={stroke_width}")
+        else:
+            print(f"[Text Overlay] No scaling needed: canvas={canvas_width}, actual={actual_width}")
         
         # Add text overlay
         result_bytes = add_text_to_image(
