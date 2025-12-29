@@ -152,11 +152,21 @@ async def generate_image(
 
 @app.post("/api/suggest-texts")
 async def suggest_texts(
-    product_description: str = Form(...)
+    image_id: str = Form(...),
+    product_description: str = Form(default="")
 ):
-    """Generate Hebrew marketing text suggestions"""
+    """Generate Hebrew marketing text suggestions based on image analysis"""
     try:
-        texts = await generate_hebrew_marketing_text(product_description)
+        # Load image
+        image_path = OUTPUT_DIR / f"{image_id}.png"
+        if not image_path.exists():
+            raise HTTPException(status_code=404, detail="Image not found")
+        
+        with open(image_path, "rb") as f:
+            image_bytes = f.read()
+        
+        # Generate text suggestions using Gemini vision
+        texts = await generate_hebrew_marketing_text(image_bytes, product_description)
         
         return {
             "success": True,

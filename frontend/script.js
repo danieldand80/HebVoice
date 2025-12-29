@@ -554,15 +554,21 @@ function stopDrag() {
     isDragging = false;
 }
 
-// Suggest text using AI
+// Suggest text using AI (Gemini vision analysis)
 suggestTextBtn.addEventListener('click', async () => {
-    const prompt = document.getElementById('prompt').value || 'product';
+    if (!currentImageId) {
+        showError(currentLang === 'en' ? 'No image selected' : 'לא נבחרה תמונה');
+        return;
+    }
+    
+    const prompt = document.getElementById('prompt').value || '';
     
     suggestTextBtn.disabled = true;
-    suggestTextBtn.textContent = currentLang === 'en' ? 'Loading...' : 'טוען...';
+    suggestTextBtn.textContent = currentLang === 'en' ? 'Analyzing image...' : 'מנתח תמונה...';
     
     try {
         const formData = new FormData();
+        formData.append('image_id', currentImageId);
         formData.append('product_description', prompt);
         
         const response = await fetch('/api/suggest-texts', {
@@ -599,7 +605,8 @@ suggestTextBtn.addEventListener('click', async () => {
         showError(currentLang === 'en' ? 'Failed to generate text suggestions' : 'נכשל ביצירת הצעות טקסט');
     } finally {
         suggestTextBtn.disabled = false;
-        suggestTextBtn.innerHTML = currentLang === 'en' ? '💡 Suggest Text' : '💡 הצע טקסט';
+        const btnText = currentLang === 'en' ? '💡 AI Analyze Image' : '💡 ניתוח AI של התמונה';
+        suggestTextBtn.innerHTML = `<span data-en="💡 AI Analyze Image" data-he="💡 ניתוח AI של התמונה">${btnText}</span>`;
     }
 });
 
