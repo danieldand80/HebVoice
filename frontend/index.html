@@ -166,12 +166,13 @@
                                 placeholder="הכנס את הטקסט שלך כאן..."
                                 dir="auto"
                             ></textarea>
-                            <button type="button" id="suggestTextBtn" class="btn-secondary small-btn">
-                                <span data-en="💡 AI Analyze Image" data-he="💡 ניתוח AI של התמונה">💡 ניתוח AI של התמונה</span>
-                            </button>
+                            <small class="hint" data-en="💡 Click on the image to move text position" data-he="💡 לחץ על התמונה כדי להזיז את הטקסט">💡 לחץ על התמונה כדי להזיז את הטקסט</small>
                         </div>
 
-                        <div id="textSuggestions" class="text-suggestions" style="display: none;">
+                        <div id="textSuggestions" class="text-suggestions">
+                            <div class="suggestions-loading" style="display: none;">
+                                <span data-en="🤖 AI is analyzing the image..." data-he="🤖 AI מנתח את התמונה...">🤖 AI מנתח את התמונה...</span>
+                            </div>
                             <!-- AI-generated text suggestions will appear here -->
                         </div>
 
@@ -214,24 +215,6 @@
                             <label data-en="Outline Width:" data-he="עובי מתאר:">עובי מתאר:</label>
                             <input type="range" id="outlineWidth" min="0" max="10" value="2" step="1">
                             <span id="outlineWidthValue">2px</span>
-                        </div>
-
-                        <div class="form-group">
-                            <label data-en="Text Alignment:" data-he="יישור טקסט:">יישור טקסט:</label>
-                            <div class="align-selector">
-                                <label>
-                                    <input type="radio" name="textAlign" value="left">
-                                    <span data-en="Left" data-he="שמאל">שמאל</span>
-                                </label>
-                                <label>
-                                    <input type="radio" name="textAlign" value="center">
-                                    <span data-en="Center" data-he="מרכז">מרכז</span>
-                                </label>
-                                <label>
-                                    <input type="radio" name="textAlign" value="right" checked>
-                                    <span data-en="Right" data-he="ימין">ימין</span>
-                                </label>
-                            </div>
                         </div>
 
                         <div class="editor-actions">

@@ -432,7 +432,62 @@ function openTextEditor() {
     // Reset text input
     textInput.value = '';
     textPosition = { x: 100, y: 100 };
-    updateTextPreview();
+    
+    // Auto-trigger AI analysis
+    autoAnalyzeImage();
+}
+
+async function autoAnalyzeImage() {
+    if (!currentImageId) return;
+    
+    const prompt = document.getElementById('prompt').value || '';
+    const loadingEl = textSuggestions.querySelector('.suggestions-loading');
+    
+    // Show loading
+    loadingEl.style.display = 'block';
+    textSuggestions.style.display = 'flex';
+    
+    try {
+        const formData = new FormData();
+        formData.append('image_id', currentImageId);
+        formData.append('product_description', prompt);
+        formData.append('language', currentLang); // Pass current UI language
+        
+        const response = await fetch('/api/suggest-texts', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to generate suggestions');
+        }
+        
+        const data = await response.json();
+        
+        // Hide loading
+        loadingEl.style.display = 'none';
+        
+        // Display suggestions
+        const existingSuggestions = textSuggestions.querySelectorAll('.text-suggestion-item');
+        existingSuggestions.forEach(el => el.remove());
+        
+        if (data.texts && data.texts.length > 0) {
+            data.texts.forEach(text => {
+                const suggestionEl = document.createElement('span');
+                suggestionEl.className = 'text-suggestion-item';
+                suggestionEl.textContent = text;
+                suggestionEl.addEventListener('click', () => {
+                    textInput.value = text;
+                    redrawCanvas(); // Redraw canvas with new text
+                });
+                textSuggestions.appendChild(suggestionEl);
+            });
+        }
+        
+    } catch (error) {
+        loadingEl.style.display = 'none';
+        console.error('Auto AI analysis failed:', error);
+    }
 }
 
 function closeTextEditorModal() {
@@ -491,39 +546,26 @@ function drawTextOnCanvas() {
     const color = textColor.value;
     const oColor = outlineColor.value;
     const oWidth = parseInt(outlineWidth.value);
-    const align = document.querySelector('input[name="textAlign"]:checked')?.value || 'right';
     
     // Set font
     canvasCtx.font = `${bold ? 'bold' : 'normal'} ${size}px ${font}`;
     canvasCtx.textBaseline = 'top';
     
-    // Calculate text position based on alignment RELATIVE TO IMAGE
-    const metrics = canvasCtx.measureText(text);
-    const textWidth = metrics.width;
-    
-    let drawX;
-    if (align === 'right') {
-        // Right align (ימין): X position is from left edge of canvas
-        drawX = textPosition.x;
-    } else if (align === 'center') {
-        // Center align (מרכז): center the text on canvas, Y is free position
-        drawX = (textCanvas.width - textWidth) / 2;
-    } else if (align === 'left') {
-        // Left align (שמאל): X position is from right edge of canvas
-        drawX = textCanvas.width - textPosition.x - textWidth;
-    }
+    // Draw text exactly at clicked position - NO alignment calculations
+    const drawX = textPosition.x;
+    const drawY = textPosition.y;
     
     // Draw outline (stroke)
     if (oWidth > 0) {
         canvasCtx.strokeStyle = oColor;
         canvasCtx.lineWidth = oWidth * 2;
         canvasCtx.lineJoin = 'round';
-        canvasCtx.strokeText(text, drawX, textPosition.y);
+        canvasCtx.strokeText(text, drawX, drawY);
     }
     
     // Draw text
     canvasCtx.fillStyle = color;
-    canvasCtx.fillText(text, drawX, textPosition.y);
+    canvasCtx.fillText(text, drawX, drawY);
 }
 
 // Update text preview when inputs change
@@ -605,62 +647,7 @@ function stopDrag() {
     isDragging = false;
 }
 
-// Suggest text using AI (Gemini vision analysis)
-suggestTextBtn.addEventListener('click', async () => {
-    if (!currentImageId) {
-        showError(currentLang === 'en' ? 'No image selected' : 'לא נבחרה תמונה');
-        return;
-    }
-    
-    const prompt = document.getElementById('prompt').value || '';
-    
-    suggestTextBtn.disabled = true;
-    suggestTextBtn.textContent = currentLang === 'en' ? 'Analyzing image...' : 'מנתח תמונה...';
-    
-    try {
-        const formData = new FormData();
-        formData.append('image_id', currentImageId);
-        formData.append('product_description', prompt);
-        formData.append('language', currentLang); // Pass current UI language
-        
-        const response = await fetch('/api/suggest-texts', {
-            method: 'POST',
-            body: formData
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to generate suggestions');
-        }
-        
-        const data = await response.json();
-        
-        // Display suggestions
-        textSuggestions.innerHTML = '';
-        if (data.texts && data.texts.length > 0) {
-            data.texts.forEach(text => {
-                const suggestionEl = document.createElement('span');
-                suggestionEl.className = 'text-suggestion-item';
-                suggestionEl.textContent = text;
-                suggestionEl.addEventListener('click', () => {
-                    textInput.value = text;
-                    redrawCanvas(); // Redraw canvas with new text
-                    textSuggestions.style.display = 'none';
-                });
-                textSuggestions.appendChild(suggestionEl);
-            });
-            textSuggestions.style.display = 'flex';
-        } else {
-            showError(currentLang === 'en' ? 'No suggestions available' : 'אין הצעות זמינות');
-        }
-        
-    } catch (error) {
-        showError(currentLang === 'en' ? 'Failed to generate text suggestions' : 'נכשל ביצירת הצעות טקסט');
-    } finally {
-        suggestTextBtn.disabled = false;
-        const btnText = currentLang === 'en' ? '💡 AI Analyze Image' : '💡 ניתוח AI של התמונה';
-        suggestTextBtn.innerHTML = `<span data-en="💡 AI Analyze Image" data-he="💡 ניתוח AI של התמונה">${btnText}</span>`;
-    }
-});
+// AI analysis is now automatic on editor open (see autoAnalyzeImage function)
 
 // Apply text to image
 applyTextBtn.addEventListener('click', async () => {
@@ -680,8 +667,6 @@ applyTextBtn.addEventListener('click', async () => {
     applyTextBtn.textContent = currentLang === 'en' ? 'Applying...' : 'מחיל...';
     
     try {
-        // Get text alignment
-        const align = document.querySelector('input[name="textAlign"]:checked')?.value || 'right';
         const font = fontFamily.value || 'Arial';
         
         // Convert hex colors to RGBA
@@ -699,7 +684,6 @@ applyTextBtn.addEventListener('click', async () => {
         formData.append('stroke_color', strokeRGBA);
         formData.append('stroke_width', outlineWidth.value);
         formData.append('bold', boldFont.checked);
-        formData.append('align', align);
         
         const response = await fetch('/api/add-text', {
             method: 'POST',

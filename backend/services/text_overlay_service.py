@@ -102,8 +102,7 @@ def add_text_to_image(
     font_color: Tuple[int, int, int, int] = DEFAULT_FONT_COLOR,
     stroke_color: Optional[Tuple[int, int, int, int]] = DEFAULT_STROKE_COLOR,
     stroke_width: int = DEFAULT_STROKE_WIDTH,
-    bold: bool = False,
-    align: str = "right"  # "left", "center", "right" (right for Hebrew)
+    bold: bool = False
 ) -> bytes:
     """
     Add text overlay to an image with Hebrew support
@@ -111,13 +110,13 @@ def add_text_to_image(
     Args:
         image_bytes: Original image bytes
         text: Text to add (supports Hebrew RTL)
-        position: (x, y) position for text (top-left corner)
+        position: (x, y) position for text - exact position where user clicked
+        font_family: Font family name
         font_size: Font size in pixels
         font_color: RGBA color tuple for text
         stroke_color: RGBA color tuple for text outline (None for no outline)
         stroke_width: Width of text outline
         bold: Use bold font variant
-        align: Text alignment ("left", "center", "right")
     
     Returns:
         Modified image bytes
@@ -138,30 +137,12 @@ def add_text_to_image(
         # Get font
         font = get_hebrew_font(font_size, font_family, bold)
         
-        # Get text bounding box for positioning
-        bbox = draw.textbbox((0, 0), text, font=font)
-        text_width = bbox[2] - bbox[0]
-        text_height = bbox[3] - bbox[1]
+        # Use exact position from user click - NO alignment calculations
+        x, y = position
         
-        # Adjust position based on alignment RELATIVE TO IMAGE
-        x_offset, y = position
-        
-        if align == "right":
-            # Right align (ימין - for Hebrew): x_offset is from left edge
-            x = x_offset
-        elif align == "center":
-            # Center align (מרכז): center the text on image, x_offset is ignored
-            x = (img.width - text_width) // 2
-        elif align == "left":
-            # Left align (שמאל): x_offset is margin from right edge
-            x = img.width - x_offset - text_width
-        else:
-            # Default to right (Hebrew default)
-            x = x_offset
-        
-        # Ensure text is within image bounds
-        x = max(0, min(x, img.width - text_width))
-        y = max(0, min(y, img.height - text_height))
+        # Ensure text is within image bounds (minimal bounds check)
+        x = max(0, min(x, img.width - 10))
+        y = max(0, min(y, img.height - 10))
         
         # Draw text with outline (stroke) if specified
         if stroke_color and stroke_width > 0:

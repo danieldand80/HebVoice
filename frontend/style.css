@@ -554,6 +554,14 @@ small {
     margin: -10px;
 }
 
+.hint {
+    display: block;
+    margin-top: 8px;
+    font-size: 14px;
+    color: #667eea;
+    font-weight: 500;
+}
+
 .text-suggestions {
     display: flex;
     flex-wrap: wrap;
@@ -562,6 +570,15 @@ small {
     background: #f9f9f9;
     border-radius: 10px;
     margin-bottom: 15px;
+    min-height: 60px;
+}
+
+.suggestions-loading {
+    width: 100%;
+    text-align: center;
+    color: #667eea;
+    font-weight: 500;
+    padding: 10px;
 }
 
 .text-suggestion-item {

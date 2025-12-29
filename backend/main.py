@@ -221,8 +221,7 @@ async def add_text_endpoint(
     font_color: str = Form(default="255,255,255,255"),
     stroke_color: str = Form(default="0,0,0,255"),
     stroke_width: int = Form(default=2),
-    bold: bool = Form(default=False),
-    align: str = Form(default="right")
+    bold: bool = Form(default=False)
 ):
     """Add Hebrew text to generated image"""
     try:
@@ -252,8 +251,7 @@ async def add_text_endpoint(
             font_color=font_rgba,
             stroke_color=stroke_rgba,
             stroke_width=stroke_width,
-            bold=bold,
-            align=align
+            bold=bold
         )
         
         # Save result with new ID
