@@ -611,9 +611,13 @@ function startDrag(e) {
     const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
     const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
     
-    // Get position relative to canvas
+    // Get position relative to canvas IN REAL IMAGE COORDINATES
     let x = (clientX - canvasRect.left) / scale;
     let y = (clientY - canvasRect.top) / scale;
+    
+    console.log('[Drag] Click at display:', clientX - canvasRect.left, clientY - canvasRect.top);
+    console.log('[Drag] Scale:', scale);
+    console.log('[Drag] Real position:', x, y);
     
     // Constrain to canvas bounds
     x = Math.max(0, Math.min(x, textCanvas.width));
