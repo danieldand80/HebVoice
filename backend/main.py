@@ -338,5 +338,28 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
     print(f"Starting server on port {port}...")
     print(f"GOOGLE_API_KEY configured: {'Yes' if os.getenv('GOOGLE_API_KEY') else 'No'}")
+    
+    # List available fonts at startup
+    import glob
+    font_dirs = [
+        "/usr/share/fonts/truetype/**/*.ttf",
+        "/nix/store/*/share/fonts/**/*.ttf",
+        "C:\\Windows\\Fonts\\*.ttf"
+    ]
+    print("\n[Font Check] Searching for available fonts...")
+    found_fonts = []
+    for pattern in font_dirs:
+        found_fonts.extend(glob.glob(pattern, recursive=True))
+    
+    if found_fonts:
+        print(f"[Font Check] Found {len(found_fonts)} fonts:")
+        for font in found_fonts[:10]:  # Show first 10
+            print(f"  - {font}")
+        if len(found_fonts) > 10:
+            print(f"  ... and {len(found_fonts) - 10} more")
+    else:
+        print("[Font Check] WARNING: No fonts found! Text overlay will use tiny default font.")
+    print()
+    
     uvicorn.run(app, host="0.0.0.0", port=port)
 

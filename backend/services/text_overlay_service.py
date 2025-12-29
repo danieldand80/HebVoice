@@ -5,6 +5,7 @@ Text overlay service for adding text to images with Hebrew support
 from PIL import Image, ImageDraw, ImageFont
 import io
 import os
+import glob
 from typing import Tuple, Optional
 
 
@@ -16,7 +17,14 @@ DEFAULT_STROKE_WIDTH = 2
 
 # Try to find system fonts that support Hebrew
 HEBREW_FONTS = [
-    # Windows fonts
+    # Linux fonts (Railway uses Linux)
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+    "/nix/store/*/share/fonts/truetype/DejaVuSans.ttf",
+    "/nix/store/*/share/fonts/truetype/DejaVuSans-Bold.ttf",
+    # Windows fonts (for local dev)
     "C:\\Windows\\Fonts\\arial.ttf",
     "C:\\Windows\\Fonts\\arialbd.ttf",
     "C:\\Windows\\Fonts\\calibri.ttf",
@@ -29,67 +37,78 @@ HEBREW_FONTS = [
     "/System/Library/Fonts/Supplemental/Arial.ttf",
     "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
     "/Library/Fonts/Arial.ttf",
-    # Linux fonts
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
 ]
 
 
 def get_hebrew_font(font_size: int, font_family: str = "Arial", bold: bool = False) -> ImageFont.FreeTypeFont:
     """Get a font that supports Hebrew characters"""
     
+    # Expand glob patterns in font paths
+    expanded_fonts = []
+    for font_path in HEBREW_FONTS:
+        if '*' in font_path:
+            # Expand glob pattern
+            expanded_fonts.extend(glob.glob(font_path))
+        else:
+            expanded_fonts.append(font_path)
+    
     # Map font family names to possible font file patterns
     font_patterns = {
-        "Arial": ["arial", "Arial"],
-        "Arial Black": ["ariblk", "Arial Black"],
-        "Calibri": ["calibri"],
-        "Tahoma": ["tahoma"],
-        "Verdana": ["verdana"],
-        "Impact": ["impact"]
+        "Arial": ["arial", "liberation"],
+        "Arial Black": ["ariblk", "liberation"],
+        "Calibri": ["dejavu", "liberation"],  # Fallback to DejaVu/Liberation
+        "Tahoma": ["dejavu", "liberation"],
+        "Verdana": ["dejavu", "liberation"],
+        "Impact": ["dejavu", "liberation"]
     }
     
     # Get patterns for requested font family
-    patterns = font_patterns.get(font_family, ["arial"])
+    patterns = font_patterns.get(font_family, ["dejavu", "liberation", "arial"])
+    
+    print(f"[Font Search] Looking for: {font_family} (bold: {bold}, size: {font_size})")
     
     # Try to find font matching family and bold
-    for font_path in HEBREW_FONTS:
-        if os.path.exists(font_path):
-            font_path_lower = font_path.lower()
+    for font_path in expanded_fonts:
+        if not os.path.exists(font_path):
+            continue
             
-            # Check if this font matches the requested family
-            matches_family = any(pattern.lower() in font_path_lower for pattern in patterns)
-            if not matches_family:
-                continue
-            
-            # Check bold requirement
-            is_bold_font = "bold" in font_path_lower or "bd" in font_path_lower or "black" in font_path_lower
-            if bold and not is_bold_font:
-                continue
-            if not bold and is_bold_font:
-                continue
-            
-            try:
-                font = ImageFont.truetype(font_path, font_size)
-                print(f"[Text Overlay] Using font: {font_path} (family: {font_family}, bold: {bold})")
-                return font
-            except Exception as e:
-                print(f"[Text Overlay] Failed to load font {font_path}: {e}")
-                continue
+        font_path_lower = font_path.lower()
+        
+        # Check if this font matches the requested family
+        matches_family = any(pattern.lower() in font_path_lower for pattern in patterns)
+        if not matches_family:
+            continue
+        
+        # Check bold requirement (be flexible)
+        is_bold_font = "bold" in font_path_lower or "bd" in font_path_lower or "black" in font_path_lower
+        if bold and not is_bold_font:
+            continue
+        if not bold and is_bold_font:
+            continue
+        
+        try:
+            font = ImageFont.truetype(font_path, font_size)
+            print(f"[Font Search] ✓ Using font: {font_path}")
+            return font
+        except Exception as e:
+            print(f"[Font Search] ✗ Failed to load {font_path}: {e}")
+            continue
     
-    # Fallback: try any font from the list
-    print(f"[Text Overlay] WARNING: Could not find {font_family} (bold: {bold}), using fallback")
-    for font_path in HEBREW_FONTS:
-        if os.path.exists(font_path):
-            try:
-                font = ImageFont.truetype(font_path, font_size)
-                print(f"[Text Overlay] Using fallback font: {font_path}")
-                return font
-            except Exception as e:
-                continue
+    # Fallback: try ANY TrueType font (ignore family/bold requirements)
+    print(f"[Font Search] Could not find {font_family} (bold: {bold}), trying any font...")
+    for font_path in expanded_fonts:
+        if not os.path.exists(font_path):
+            continue
+        try:
+            font = ImageFont.truetype(font_path, font_size)
+            print(f"[Font Search] ✓ Using fallback font: {font_path}")
+            return font
+        except Exception as e:
+            continue
     
-    # Final fallback to default font (might not support Hebrew well)
-    print("[Text Overlay] WARNING: Using default font (Hebrew support may be limited)")
+    # LAST RESORT: Create a large default font
+    print("[Font Search] ERROR: No TrueType fonts found! Using PIL default (will be tiny)")
+    # Default font ignores size, but at least return something
     return ImageFont.load_default()
 
 
