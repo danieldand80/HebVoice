@@ -163,6 +163,14 @@ def add_text_to_image(
         x = max(0, min(x, img.width - 10))
         y = max(0, min(y, img.height - 10))
         
+        # Detect Hebrew text for RTL rendering
+        is_hebrew = any('\u0590' <= c <= '\u05FF' for c in text)
+        text_direction = "rtl" if is_hebrew else "ltr"
+        
+        print(f"[PIL Text] Drawing at ({x}, {y})")
+        print(f"[PIL Text] Font size: {font_size}px")
+        print(f"[PIL Text] Text: '{text}' (direction: {text_direction})")
+        
         # Draw text with outline (stroke) if specified
         if stroke_color and stroke_width > 0:
             draw.text(
@@ -171,14 +179,16 @@ def add_text_to_image(
                 font=font,
                 fill=font_color,
                 stroke_fill=stroke_color,
-                stroke_width=stroke_width
+                stroke_width=stroke_width,
+                direction=text_direction
             )
         else:
             draw.text(
                 (x, y),
                 text,
                 font=font,
-                fill=font_color
+                fill=font_color,
+                direction=text_direction
             )
         
         # Composite the text layer onto the original image

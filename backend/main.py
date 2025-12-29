@@ -249,11 +249,14 @@ async def add_text_endpoint(
         img_check = PILImage.open(io.BytesIO(image_bytes))
         actual_width, actual_height = img_check.size
         
-        print(f"[Text Overlay] Canvas: {canvas_width}x{canvas_height}")
-        print(f"[Text Overlay] Image: {actual_width}x{actual_height}")
+        print(f"[Text Overlay] ========== DEBUG ==========")
+        print(f"[Text Overlay] Canvas (from frontend): {canvas_width}x{canvas_height}")
+        print(f"[Text Overlay] Image (actual file): {actual_width}x{actual_height}")
         print(f"[Text Overlay] Font size: {font_size}px")
-        print(f"[Text Overlay] Position: ({x}, {y})")
+        print(f"[Text Overlay] Position from frontend: ({x}, {y})")
         print(f"[Text Overlay] Stroke width: {stroke_width}px")
+        print(f"[Text Overlay] Text: '{text}'")
+        print(f"[Text Overlay] Font family: {font_family}")
         
         # Canvas должен быть равен изображению - масштабирование НЕ нужно!
         # Если размеры не совпадают - это ошибка

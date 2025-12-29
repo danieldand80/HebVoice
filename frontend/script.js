@@ -702,9 +702,12 @@ applyTextBtn.addEventListener('click', async () => {
         formData.append('canvas_width', textCanvas.width);
         formData.append('canvas_height', textCanvas.height);
         
+        console.log('[Apply Text] ========== SENDING TO BACKEND ==========');
         console.log('[Apply Text] Canvas size:', textCanvas.width, 'x', textCanvas.height);
-        console.log('[Apply Text] Font size:', fontSize.value);
-        console.log('[Apply Text] Position:', textPosition);
+        console.log('[Apply Text] Font size:', fontSize.value, 'px');
+        console.log('[Apply Text] Position (x,y):', textPosition.x, ',', textPosition.y);
+        console.log('[Apply Text] Text:', text);
+        console.log('[Apply Text] Font family:', font);
         
         const response = await fetch('/api/add-text', {
             method: 'POST',
