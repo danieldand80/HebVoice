@@ -243,23 +243,22 @@ async def add_text_endpoint(
             font_rgba = (255, 255, 255, 255)
             stroke_rgba = (0, 0, 0, 255)
         
-        # Check actual image size vs canvas size for scaling
+        # Check actual image size
         from PIL import Image as PILImage
         import io
         img_check = PILImage.open(io.BytesIO(image_bytes))
         actual_width, actual_height = img_check.size
         
-        # Scale coordinates and font size if canvas size differs
-        if canvas_width > 0 and canvas_width != actual_width:
-            scale = actual_width / canvas_width
-            x = int(x * scale)
-            y = int(y * scale)
-            font_size = int(font_size * scale)
-            stroke_width = int(stroke_width * scale)
-            print(f"[Text Overlay] Scaling: canvas={canvas_width}x{canvas_height}, actual={actual_width}x{actual_height}, scale={scale:.2f}")
-            print(f"[Text Overlay] Scaled: pos=({x},{y}), font_size={font_size}, stroke={stroke_width}")
-        else:
-            print(f"[Text Overlay] No scaling needed: canvas={canvas_width}, actual={actual_width}")
+        print(f"[Text Overlay] Canvas: {canvas_width}x{canvas_height}")
+        print(f"[Text Overlay] Image: {actual_width}x{actual_height}")
+        print(f"[Text Overlay] Font size: {font_size}px")
+        print(f"[Text Overlay] Position: ({x}, {y})")
+        print(f"[Text Overlay] Stroke width: {stroke_width}px")
+        
+        # Canvas должен быть равен изображению - масштабирование НЕ нужно!
+        # Если размеры не совпадают - это ошибка
+        if canvas_width > 0 and abs(canvas_width - actual_width) > 10:
+            print(f"[WARNING] Canvas size mismatch! This should not happen.")
         
         # Add text overlay
         result_bytes = add_text_to_image(

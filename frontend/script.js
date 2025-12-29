@@ -424,6 +424,9 @@ closeTextEditor.addEventListener('click', closeTextEditorModal);
 cancelTextBtn.addEventListener('click', closeTextEditorModal);
 
 function openTextEditor() {
+    console.log('[Editor] Opening text editor for image:', currentImageId);
+    console.log('[Editor] Current image data:', currentImageData);
+    
     textEditorModal.style.display = 'block';
     
     // Load image onto canvas
@@ -499,13 +502,20 @@ function loadImageToCanvas(imageSrc) {
     img.onload = () => {
         currentImage = img;
         
-        // Set canvas size to image size
-        const maxWidth = textCanvas.parentElement.clientWidth - 40;
-        canvasScale = maxWidth / img.width;
+        console.log('[Canvas] Image loaded, actual size:', img.width, 'x', img.height);
         
+        // Set canvas size to EXACT image size (no scaling)
         textCanvas.width = img.width;
         textCanvas.height = img.height;
+        
+        // Scale display for UI
+        const maxWidth = textCanvas.parentElement.clientWidth - 40;
+        canvasScale = Math.min(1, maxWidth / img.width);
         textCanvas.style.maxWidth = maxWidth + 'px';
+        textCanvas.style.height = 'auto';
+        
+        console.log('[Canvas] Canvas size:', textCanvas.width, 'x', textCanvas.height);
+        console.log('[Canvas] Display scale:', canvasScale);
         
         canvasCtx = textCanvas.getContext('2d');
         
