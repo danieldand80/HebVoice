@@ -113,7 +113,7 @@
 
                 <div class="actions">
                     <button type="button" id="addTextBtn" class="btn-primary">
-                        <span data-en="✍️ Add Text" data-he="✍️ הוסף טקסט">✍️ הוסף טקסט</span>
+                        <span data-en="✍️ Add/Edit Text" data-he="✍️ הוסף/ערוך טקסט">✍️ הוסף/ערוך טקסט</span>
                     </button>
 
                     <button type="button" id="editBtn" class="btn-secondary">
@@ -122,6 +122,10 @@
 
                     <button type="button" id="downloadBtn" class="btn-success">
                         <span data-en="⬇️ Download Image" data-he="⬇️ הורד תמונה">⬇️ הורד תמונה</span>
+                    </button>
+
+                    <button type="button" id="backToGridBtn" class="btn-secondary" style="display: none;">
+                        <span data-en="🔙 Back to Gallery" data-he="🔙 חזור לגלריה">🔙 חזור לגלריה</span>
                     </button>
 
                     <button type="button" id="startOverBtn" class="btn-secondary">
@@ -148,9 +152,6 @@
                     <!-- Canvas for image + text preview -->
                     <div class="canvas-wrapper">
                         <canvas id="textCanvas"></canvas>
-                        <div id="textDragElement" class="text-drag-element" style="display: none;">
-                            <span id="textPreview"></span>
-                        </div>
                     </div>
                     
                     <!-- Controls -->
@@ -172,6 +173,18 @@
 
                         <div id="textSuggestions" class="text-suggestions" style="display: none;">
                             <!-- AI-generated text suggestions will appear here -->
+                        </div>
+
+                        <div class="form-group">
+                            <label data-en="Font:" data-he="פונט:">פונט:</label>
+                            <select id="fontFamily">
+                                <option value="Arial">Arial</option>
+                                <option value="Arial Black">Arial Black</option>
+                                <option value="Calibri">Calibri</option>
+                                <option value="Tahoma">Tahoma</option>
+                                <option value="Verdana">Verdana</option>
+                                <option value="Impact">Impact</option>
+                            </select>
                         </div>
 
                         <div class="form-group">

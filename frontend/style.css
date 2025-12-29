@@ -99,7 +99,8 @@ label {
 
 input[type="text"],
 textarea,
-input[type="file"] {
+input[type="file"],
+select {
     width: 100%;
     padding: 12px;
     border: 2px solid #e0e0e0;

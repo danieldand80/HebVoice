@@ -38,6 +38,7 @@ const generatedImage = document.getElementById('generatedImage');
 const editBtn = document.getElementById('editBtn');
 const downloadBtn = document.getElementById('downloadBtn');
 const startOverBtn = document.getElementById('startOverBtn');
+const backToGridBtn = document.getElementById('backToGridBtn');
 
 const errorDiv = document.getElementById('error');
 const successDiv = document.getElementById('success');
@@ -206,11 +207,27 @@ startOverBtn.addEventListener('click', () => {
     // Show single image again
     generatedImage.style.display = 'block';
     
+    // Hide back to grid button
+    backToGridBtn.style.display = 'none';
+    
     // Reset current image data
     currentImageId = null;
     currentImageData = null;
     
     hideMessages();
+});
+
+// Back to grid
+backToGridBtn.addEventListener('click', () => {
+    // Return to step 1 where grid is visible
+    step2.style.display = 'none';
+    step1.style.display = 'block';
+    
+    // Scroll to grid
+    const grid = document.getElementById('imagesGrid');
+    if (grid) {
+        grid.scrollIntoView({ behavior: 'smooth' });
+    }
 });
 
 // Helper functions
@@ -291,6 +308,13 @@ function displayImagesGrid(images) {
         selectImage(firstItem);
     }
     
+    // Show back to grid button if multiple images
+    if (images.length > 1) {
+        backToGridBtn.style.display = 'inline-block';
+    } else {
+        backToGridBtn.style.display = 'none';
+    }
+    
     // Show grid
     grid.style.display = 'grid';
 }
@@ -368,6 +392,7 @@ const textCanvas = document.getElementById('textCanvas');
 const textDragElement = document.getElementById('textDragElement');
 const textPreview = document.getElementById('textPreview');
 const textInput = document.getElementById('textInput');
+const fontFamily = document.getElementById('fontFamily');
 const fontSize = document.getElementById('fontSize');
 const fontSizeValue = document.getElementById('fontSizeValue');
 const boldFont = document.getElementById('boldFont');
@@ -382,6 +407,7 @@ let currentImage = null;
 let textPosition = { x: 100, y: 100 };
 let isDragging = false;
 let dragOffset = { x: 0, y: 0 };
+let canvasScale = 1;
 
 // Open text editor
 addTextBtn.addEventListener('click', () => {
@@ -420,7 +446,7 @@ function loadImageToCanvas(imageSrc) {
         
         // Set canvas size to image size
         const maxWidth = textCanvas.parentElement.clientWidth - 40;
-        const scale = maxWidth / img.width;
+        canvasScale = maxWidth / img.width;
         
         textCanvas.width = img.width;
         textCanvas.height = img.height;
@@ -428,15 +454,14 @@ function loadImageToCanvas(imageSrc) {
         
         canvasCtx = textCanvas.getContext('2d');
         
-        // Draw image
-        redrawCanvas();
-        
         // Position text in center initially
         textPosition = {
             x: img.width / 2,
             y: img.height / 4
         };
-        updateTextDragElement();
+        
+        // Draw everything
+        redrawCanvas();
     };
     img.src = imageSrc;
 }
@@ -449,75 +474,96 @@ function redrawCanvas() {
     
     // Draw image
     canvasCtx.drawImage(currentImage, 0, 0);
+    
+    // Draw text on canvas
+    drawTextOnCanvas();
+}
+
+function drawTextOnCanvas() {
+    if (!canvasCtx) return;
+    
+    const text = textInput.value || '';
+    if (!text) return;
+    
+    const size = parseInt(fontSize.value);
+    const bold = boldFont.checked;
+    const font = fontFamily.value;
+    const color = textColor.value;
+    const oColor = outlineColor.value;
+    const oWidth = parseInt(outlineWidth.value);
+    const align = document.querySelector('input[name="textAlign"]:checked')?.value || 'right';
+    
+    // Set font
+    canvasCtx.font = `${bold ? 'bold' : 'normal'} ${size}px ${font}`;
+    canvasCtx.textBaseline = 'top';
+    
+    // Calculate text position based on alignment
+    const metrics = canvasCtx.measureText(text);
+    const textWidth = metrics.width;
+    
+    let drawX = textPosition.x;
+    if (align === 'center') {
+        drawX = textPosition.x - textWidth / 2;
+    } else if (align === 'right') {
+        drawX = textPosition.x - textWidth;
+    }
+    
+    // Draw outline (stroke)
+    if (oWidth > 0) {
+        canvasCtx.strokeStyle = oColor;
+        canvasCtx.lineWidth = oWidth * 2;
+        canvasCtx.lineJoin = 'round';
+        canvasCtx.strokeText(text, drawX, textPosition.y);
+    }
+    
+    // Draw text
+    canvasCtx.fillStyle = color;
+    canvasCtx.fillText(text, drawX, textPosition.y);
 }
 
 // Update text preview when inputs change
-textInput.addEventListener('input', updateTextPreview);
+textInput.addEventListener('input', redrawCanvas);
+fontFamily.addEventListener('change', redrawCanvas);
 fontSize.addEventListener('input', (e) => {
     fontSizeValue.textContent = e.target.value + 'px';
-    updateTextPreview();
+    redrawCanvas();
 });
-boldFont.addEventListener('change', updateTextPreview);
-textColor.addEventListener('input', updateTextPreview);
-outlineColor.addEventListener('input', updateTextPreview);
+boldFont.addEventListener('change', redrawCanvas);
+textColor.addEventListener('input', redrawCanvas);
+outlineColor.addEventListener('input', redrawCanvas);
 outlineWidth.addEventListener('input', (e) => {
     outlineWidthValue.textContent = e.target.value + 'px';
-    updateTextPreview();
+    redrawCanvas();
 });
 
 // Update text alignment
 document.querySelectorAll('input[name="textAlign"]').forEach(radio => {
-    radio.addEventListener('change', updateTextPreview);
+    radio.addEventListener('change', redrawCanvas);
 });
 
-function updateTextPreview() {
-    const text = textInput.value || '';
-    const size = parseInt(fontSize.value);
-    const bold = boldFont.checked;
-    const color = textColor.value;
-    const oColor = outlineColor.value;
-    const oWidth = parseInt(outlineWidth.value);
-    
-    // Update draggable element
-    textPreview.textContent = text;
-    textPreview.style.fontSize = (size * 0.5) + 'px'; // Scale down for preview
-    textPreview.style.fontWeight = bold ? 'bold' : 'normal';
-    textPreview.style.color = color;
-    textPreview.style.textShadow = `-${oWidth}px -${oWidth}px 0 ${oColor}, ${oWidth}px -${oWidth}px 0 ${oColor}, -${oWidth}px ${oWidth}px 0 ${oColor}, ${oWidth}px ${oWidth}px 0 ${oColor}`;
-    
-    if (text) {
-        textDragElement.style.display = 'block';
-        updateTextDragElement();
-    } else {
-        textDragElement.style.display = 'none';
-    }
-}
-
-function updateTextDragElement() {
-    if (!textCanvas || !textCanvas.parentElement) return;
-    
-    const canvasRect = textCanvas.getBoundingClientRect();
-    const scale = canvasRect.width / textCanvas.width;
-    
-    textDragElement.style.left = (textPosition.x * scale) + 'px';
-    textDragElement.style.top = (textPosition.y * scale) + 'px';
-}
-
-// Drag and drop text positioning
-textDragElement.addEventListener('mousedown', startDrag);
-textDragElement.addEventListener('touchstart', startDrag);
+// Drag and drop text positioning on canvas
+textCanvas.addEventListener('mousedown', startDrag);
+textCanvas.addEventListener('touchstart', startDrag);
 
 function startDrag(e) {
     isDragging = true;
     
-    const rect = textDragElement.getBoundingClientRect();
+    const canvasRect = textCanvas.getBoundingClientRect();
+    const scale = canvasRect.width / textCanvas.width;
+    
     const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
     const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
     
-    dragOffset = {
-        x: clientX - rect.left,
-        y: clientY - rect.top
-    };
+    // Get position relative to canvas
+    let x = (clientX - canvasRect.left) / scale;
+    let y = (clientY - canvasRect.top) / scale;
+    
+    // Constrain to canvas bounds
+    x = Math.max(0, Math.min(x, textCanvas.width));
+    y = Math.max(0, Math.min(y, textCanvas.height));
+    
+    textPosition = { x, y };
+    redrawCanvas();
     
     e.preventDefault();
 }
@@ -534,15 +580,15 @@ function drag(e) {
     const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
     const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
     
-    let x = (clientX - canvasRect.left - dragOffset.x) / scale;
-    let y = (clientY - canvasRect.top - dragOffset.y) / scale;
+    let x = (clientX - canvasRect.left) / scale;
+    let y = (clientY - canvasRect.top) / scale;
     
     // Constrain to canvas bounds
     x = Math.max(0, Math.min(x, textCanvas.width));
     y = Math.max(0, Math.min(y, textCanvas.height));
     
     textPosition = { x, y };
-    updateTextDragElement();
+    redrawCanvas();
     
     e.preventDefault();
 }
@@ -570,6 +616,7 @@ suggestTextBtn.addEventListener('click', async () => {
         const formData = new FormData();
         formData.append('image_id', currentImageId);
         formData.append('product_description', prompt);
+        formData.append('language', currentLang); // Pass current UI language
         
         const response = await fetch('/api/suggest-texts', {
             method: 'POST',
@@ -591,7 +638,7 @@ suggestTextBtn.addEventListener('click', async () => {
                 suggestionEl.textContent = text;
                 suggestionEl.addEventListener('click', () => {
                     textInput.value = text;
-                    updateTextPreview();
+                    redrawCanvas(); // Redraw canvas with new text
                     textSuggestions.style.display = 'none';
                 });
                 textSuggestions.appendChild(suggestionEl);
@@ -629,7 +676,8 @@ applyTextBtn.addEventListener('click', async () => {
     
     try {
         // Get text alignment
-        const align = document.querySelector('input[name="textAlign"]:checked').value;
+        const align = document.querySelector('input[name="textAlign"]:checked')?.value || 'right';
+        const font = fontFamily.value || 'Arial';
         
         // Convert hex colors to RGBA
         const fontRGBA = hexToRGBA(textColor.value, 255);
@@ -670,10 +718,20 @@ applyTextBtn.addEventListener('click', async () => {
             const img = selectedImageItem.querySelector('img');
             if (img) {
                 img.src = data.image_base64;
+                // Update data attribute
+                const imageData = JSON.parse(selectedImageItem.dataset.imageData);
+                imageData.image_base64 = data.image_base64;
+                imageData.image_id = data.image_id;
+                selectedImageItem.dataset.imageData = JSON.stringify(imageData);
             }
         }
         
         closeTextEditorModal();
+        
+        // Show step 2 with the result
+        step1.style.display = 'none';
+        step2.style.display = 'block';
+        
         showSuccess(currentLang === 'en' ? 'Text added successfully!' : 'הטקסט נוסף בהצלחה!');
         
     } catch (error) {

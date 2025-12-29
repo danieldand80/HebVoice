@@ -153,9 +153,10 @@ async def generate_image(
 @app.post("/api/suggest-texts")
 async def suggest_texts(
     image_id: str = Form(...),
-    product_description: str = Form(default="")
+    product_description: str = Form(default=""),
+    language: str = Form(default="he")
 ):
-    """Generate Hebrew marketing text suggestions based on image analysis"""
+    """Generate marketing text suggestions based on image analysis"""
     try:
         # Load image
         image_path = OUTPUT_DIR / f"{image_id}.png"
@@ -166,7 +167,7 @@ async def suggest_texts(
             image_bytes = f.read()
         
         # Generate text suggestions using Gemini vision
-        texts = await generate_hebrew_marketing_text(image_bytes, product_description)
+        texts = await generate_hebrew_marketing_text(image_bytes, product_description, language=language)
         
         return {
             "success": True,

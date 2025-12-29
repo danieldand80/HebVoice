@@ -16,40 +16,51 @@ if GOOGLE_API_KEY:
 async def generate_hebrew_marketing_text(
     image_bytes: bytes,
     product_description: str = "",
-    style: str = "promotional"
+    style: str = "promotional",
+    language: str = "he"
 ) -> list[str]:
     """
-    Generate Hebrew marketing text suggestions using Gemini vision model
+    Generate marketing text suggestions using Gemini vision model
     Analyzes the image to suggest relevant text overlays
     """
     
     if not client or not GOOGLE_API_KEY:
         # Fallback templates if no API key
-        return [
-            "מבצע מיוחד!",
-            "הזדמנות אחרונה",
-            "קנה עכשיו",
-            "חדש!",
-            "מחיר מיוחד"
-        ]
+        if language == "en":
+            return [
+                "Special Offer!",
+                "New Arrival",
+                "Buy Now",
+                "Hot Deal",
+                "Limited Time"
+            ]
+        else:
+            return [
+                "מבצע מיוחד!",
+                "הזדמנות אחרונה",
+                "קנה עכשיו",
+                "חדש!",
+                "מחיר מיוחד"
+            ]
     
     try:
         # Prepare prompt for Gemini
         context = f"Product context: {product_description}" if product_description else ""
+        lang_name = "Hebrew" if language == "he" else "English"
         
-        prompt = f"""Analyze this product image and suggest 5 short Hebrew marketing texts that would work well as overlays on this image.
+        prompt = f"""Analyze this product image and suggest 5 short {lang_name} marketing texts that would work well as overlays on this image.
 
 {context}
 
 Requirements:
-- Very short (2-5 words in Hebrew)
+- Very short (2-5 words in {lang_name})
 - Catchy and promotional
 - Suitable for social media ads and product images
-- Native Hebrew, proper grammar
+- Native {lang_name}, proper grammar
 - Consider the image content, colors, and composition
 - Texts should stand out on the image
 
-Return ONLY the Hebrew texts, one per line, without numbers or bullets."""
+Return ONLY the {lang_name} texts, one per line, without numbers or bullets."""
 
         # Convert image to base64 for Gemini
         image_b64 = base64.b64encode(image_bytes).decode('utf-8')
