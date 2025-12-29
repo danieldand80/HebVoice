@@ -561,9 +561,20 @@ function drawTextOnCanvas() {
     canvasCtx.font = `${bold ? 'bold' : 'normal'} ${size}px ${font}`;
     canvasCtx.textBaseline = 'top';
     
-    // Draw text exactly at clicked position - NO alignment calculations
-    const drawX = textPosition.x;
-    const drawY = textPosition.y;
+    // Detect Hebrew text (RTL)
+    const isHebrew = /[\u0590-\u05FF]/.test(text);
+    
+    // For Hebrew (RTL), adjust position so text flows right-to-left from click point
+    let drawX = textPosition.x;
+    let drawY = textPosition.y;
+    
+    if (isHebrew) {
+        canvasCtx.direction = 'rtl';
+        canvasCtx.textAlign = 'right'; // Hebrew text anchor point is on the RIGHT
+    } else {
+        canvasCtx.direction = 'ltr';
+        canvasCtx.textAlign = 'left';
+    }
     
     // Draw outline (stroke)
     if (oWidth > 0) {
@@ -643,6 +654,8 @@ function drag(e) {
     
     let x = (clientX - canvasRect.left) / scale;
     let y = (clientY - canvasRect.top) / scale;
+    
+    console.log('[Drag Move] Display:', clientX - canvasRect.left, clientY - canvasRect.top, '→ Real:', x, y);
     
     // Constrain to canvas bounds
     x = Math.max(0, Math.min(x, textCanvas.width));

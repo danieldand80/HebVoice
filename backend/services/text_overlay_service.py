@@ -167,6 +167,14 @@ def add_text_to_image(
         is_hebrew = any('\u0590' <= c <= '\u05FF' for c in text)
         text_direction = "rtl" if is_hebrew else "ltr"
         
+        # For RTL text, adjust x position (user clicks LEFT edge, but PIL draws from RIGHT edge)
+        if is_hebrew:
+            # Get text width
+            bbox = draw.textbbox((0, 0), text, font=font, stroke_width=stroke_width if stroke_color else 0)
+            text_width = bbox[2] - bbox[0]
+            x = x - text_width  # Shift left by text width
+            print(f"[PIL Text] RTL: Adjusted x from {x + text_width} to {x} (text_width: {text_width})")
+        
         print(f"[PIL Text] Drawing at ({x}, {y})")
         print(f"[PIL Text] Font size: {font_size}px")
         print(f"[PIL Text] Text: '{text}' (direction: {text_direction})")
