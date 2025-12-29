@@ -172,24 +172,45 @@ def add_text_to_image(
         print(f"[PIL Text] Text: '{text}' (direction: {text_direction})")
         
         # Draw text with outline (stroke) if specified
-        if stroke_color and stroke_width > 0:
-            draw.text(
-                (x, y),
-                text,
-                font=font,
-                fill=font_color,
-                stroke_fill=stroke_color,
-                stroke_width=stroke_width,
-                direction=text_direction
-            )
-        else:
-            draw.text(
-                (x, y),
-                text,
-                font=font,
-                fill=font_color,
-                direction=text_direction
-            )
+        # Try with direction parameter first (requires libraqm)
+        try:
+            if stroke_color and stroke_width > 0:
+                draw.text(
+                    (x, y),
+                    text,
+                    font=font,
+                    fill=font_color,
+                    stroke_fill=stroke_color,
+                    stroke_width=stroke_width,
+                    direction=text_direction
+                )
+            else:
+                draw.text(
+                    (x, y),
+                    text,
+                    font=font,
+                    fill=font_color,
+                    direction=text_direction
+                )
+        except (KeyError, ValueError) as e:
+            # Fallback without direction parameter if libraqm is not available
+            print(f"[PIL Text] WARNING: RTL not supported ({e}), drawing without direction parameter")
+            if stroke_color and stroke_width > 0:
+                draw.text(
+                    (x, y),
+                    text,
+                    font=font,
+                    fill=font_color,
+                    stroke_fill=stroke_color,
+                    stroke_width=stroke_width
+                )
+            else:
+                draw.text(
+                    (x, y),
+                    text,
+                    font=font,
+                    fill=font_color
+                )
         
         # Composite the text layer onto the original image
         img = Image.alpha_composite(img, txt_layer)

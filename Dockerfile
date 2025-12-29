@@ -5,6 +5,8 @@ RUN apt-get update && apt-get install -y \
     fonts-dejavu \
     fonts-liberation \
     fontconfig \
+    libraqm0 \
+    libraqm-dev \
     && fc-cache -f -v \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
