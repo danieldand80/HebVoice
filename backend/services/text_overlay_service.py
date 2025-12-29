@@ -36,24 +36,59 @@ HEBREW_FONTS = [
 ]
 
 
-def get_hebrew_font(font_size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
+def get_hebrew_font(font_size: int, font_family: str = "Arial", bold: bool = False) -> ImageFont.FreeTypeFont:
     """Get a font that supports Hebrew characters"""
     
-    # Try to find an available font
+    # Map font family names to possible font file patterns
+    font_patterns = {
+        "Arial": ["arial", "Arial"],
+        "Arial Black": ["ariblk", "Arial Black"],
+        "Calibri": ["calibri"],
+        "Tahoma": ["tahoma"],
+        "Verdana": ["verdana"],
+        "Impact": ["impact"]
+    }
+    
+    # Get patterns for requested font family
+    patterns = font_patterns.get(font_family, ["arial"])
+    
+    # Try to find font matching family and bold
     for font_path in HEBREW_FONTS:
         if os.path.exists(font_path):
+            font_path_lower = font_path.lower()
+            
+            # Check if this font matches the requested family
+            matches_family = any(pattern.lower() in font_path_lower for pattern in patterns)
+            if not matches_family:
+                continue
+            
+            # Check bold requirement
+            is_bold_font = "bold" in font_path_lower or "bd" in font_path_lower or "black" in font_path_lower
+            if bold and not is_bold_font:
+                continue
+            if not bold and is_bold_font:
+                continue
+            
             try:
-                if bold and "bold" not in font_path.lower() and "bd" not in font_path.lower():
-                    # Skip non-bold fonts if bold requested
-                    continue
                 font = ImageFont.truetype(font_path, font_size)
-                print(f"[Text Overlay] Using font: {font_path}")
+                print(f"[Text Overlay] Using font: {font_path} (family: {font_family}, bold: {bold})")
                 return font
             except Exception as e:
                 print(f"[Text Overlay] Failed to load font {font_path}: {e}")
                 continue
     
-    # Fallback to default font (might not support Hebrew well)
+    # Fallback: try any font from the list
+    print(f"[Text Overlay] WARNING: Could not find {font_family} (bold: {bold}), using fallback")
+    for font_path in HEBREW_FONTS:
+        if os.path.exists(font_path):
+            try:
+                font = ImageFont.truetype(font_path, font_size)
+                print(f"[Text Overlay] Using fallback font: {font_path}")
+                return font
+            except Exception as e:
+                continue
+    
+    # Final fallback to default font (might not support Hebrew well)
     print("[Text Overlay] WARNING: Using default font (Hebrew support may be limited)")
     return ImageFont.load_default()
 
@@ -62,6 +97,7 @@ def add_text_to_image(
     image_bytes: bytes,
     text: str,
     position: Tuple[int, int],
+    font_family: str = "Arial",
     font_size: int = DEFAULT_FONT_SIZE,
     font_color: Tuple[int, int, int, int] = DEFAULT_FONT_COLOR,
     stroke_color: Optional[Tuple[int, int, int, int]] = DEFAULT_STROKE_COLOR,
@@ -100,7 +136,7 @@ def add_text_to_image(
         draw = ImageDraw.Draw(txt_layer)
         
         # Get font
-        font = get_hebrew_font(font_size, bold)
+        font = get_hebrew_font(font_size, font_family, bold)
         
         # Get text bounding box for positioning
         bbox = draw.textbbox((0, 0), text, font=font)
@@ -110,17 +146,17 @@ def add_text_to_image(
         # Adjust position based on alignment RELATIVE TO IMAGE
         x_offset, y = position
         
-        if align == "left":
-            # Left align: x_offset is from left edge
+        if align == "right":
+            # Right align (ימין - for Hebrew): x_offset is from left edge
             x = x_offset
         elif align == "center":
-            # Center align: center the text on image, x_offset is ignored
+            # Center align (מרכז): center the text on image, x_offset is ignored
             x = (img.width - text_width) // 2
-        elif align == "right":
-            # Right align: x_offset is from right edge (margin)
+        elif align == "left":
+            # Left align (שמאל): x_offset is margin from right edge
             x = img.width - x_offset - text_width
         else:
-            # Default to left
+            # Default to right (Hebrew default)
             x = x_offset
         
         # Ensure text is within image bounds

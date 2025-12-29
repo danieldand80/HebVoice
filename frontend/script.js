@@ -502,14 +502,14 @@ function drawTextOnCanvas() {
     const textWidth = metrics.width;
     
     let drawX;
-    if (align === 'left') {
-        // Left align: X position is from left edge of canvas
+    if (align === 'right') {
+        // Right align (ימין): X position is from left edge of canvas
         drawX = textPosition.x;
     } else if (align === 'center') {
-        // Center align: center the text on canvas, Y is free position
+        // Center align (מרכז): center the text on canvas, Y is free position
         drawX = (textCanvas.width - textWidth) / 2;
-    } else if (align === 'right') {
-        // Right align: X position is from right edge of canvas
+    } else if (align === 'left') {
+        // Left align (שמאל): X position is from right edge of canvas
         drawX = textCanvas.width - textPosition.x - textWidth;
     }
     
@@ -693,6 +693,7 @@ applyTextBtn.addEventListener('click', async () => {
         formData.append('text', text);
         formData.append('x', Math.round(textPosition.x));
         formData.append('y', Math.round(textPosition.y));
+        formData.append('font_family', font);
         formData.append('font_size', fontSize.value);
         formData.append('font_color', fontRGBA);
         formData.append('stroke_color', strokeRGBA);
