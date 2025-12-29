@@ -1,124 +1,200 @@
+"""
+Text overlay service for adding text to images with Hebrew support
+"""
+
 from PIL import Image, ImageDraw, ImageFont
 import io
-from typing import List, Dict, Tuple
+import os
+from typing import Tuple, Optional
 
-class TextOverlay:
-    def __init__(self, image_bytes: bytes):
-        """Initialize with image bytes"""
-        self.image = Image.open(io.BytesIO(image_bytes)).convert('RGBA')
-        self.width, self.height = self.image.size
+
+# Default font settings
+DEFAULT_FONT_SIZE = 48
+DEFAULT_FONT_COLOR = (255, 255, 255, 255)  # White with full opacity
+DEFAULT_STROKE_COLOR = (0, 0, 0, 255)  # Black outline
+DEFAULT_STROKE_WIDTH = 2
+
+# Try to find system fonts that support Hebrew
+HEBREW_FONTS = [
+    # Windows fonts
+    "C:\\Windows\\Fonts\\arial.ttf",
+    "C:\\Windows\\Fonts\\arialbd.ttf",
+    "C:\\Windows\\Fonts\\calibri.ttf",
+    "C:\\Windows\\Fonts\\calibrib.ttf",
+    "C:\\Windows\\Fonts\\tahoma.ttf",
+    "C:\\Windows\\Fonts\\tahomabd.ttf",
+    "C:\\Windows\\Fonts\\verdana.ttf",
+    "C:\\Windows\\Fonts\\verdanab.ttf",
+    # macOS fonts
+    "/System/Library/Fonts/Supplemental/Arial.ttf",
+    "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+    "/Library/Fonts/Arial.ttf",
+    # Linux fonts
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+]
+
+
+def get_hebrew_font(font_size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
+    """Get a font that supports Hebrew characters"""
     
-    def add_text(
-        self,
-        text: str,
-        position: Tuple[int, int],
-        font_size: int = 60,
-        color: str = "#FFFFFF",
-        stroke_color: str = "#000000",
-        stroke_width: int = 2,
-        font_path: str = None
-    ) -> None:
-        """Add Hebrew text to image"""
-        
-        # Create drawing context
-        draw = ImageDraw.Draw(self.image)
-        
-        # Load font (you'll need to add Hebrew font file)
-        try:
-            if font_path:
+    # Try to find an available font
+    for font_path in HEBREW_FONTS:
+        if os.path.exists(font_path):
+            try:
+                if bold and "bold" not in font_path.lower() and "bd" not in font_path.lower():
+                    # Skip non-bold fonts if bold requested
+                    continue
                 font = ImageFont.truetype(font_path, font_size)
-            else:
-                # Try to use system font
-                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
-        except:
-            # Fallback to default
-            font = ImageFont.load_default()
-        
-        # Reverse Hebrew text for proper RTL display
-        # Note: PIL handles this automatically for most Hebrew fonts
-        
-        # Draw text with stroke (outline)
-        x, y = position
-        
-        if stroke_width > 0:
-            # Draw stroke
-            for adj_x in range(-stroke_width, stroke_width + 1):
-                for adj_y in range(-stroke_width, stroke_width + 1):
-                    draw.text((x + adj_x, y + adj_y), text, font=font, fill=stroke_color)
-        
-        # Draw main text
-        draw.text((x, y), text, font=font, fill=color)
+                print(f"[Text Overlay] Using font: {font_path}")
+                return font
+            except Exception as e:
+                print(f"[Text Overlay] Failed to load font {font_path}: {e}")
+                continue
     
-    def get_image_bytes(self, format: str = "PNG") -> bytes:
-        """Export image as bytes"""
-        output = io.BytesIO()
-        
-        # Convert RGBA to RGB if saving as JPEG
-        if format.upper() == "JPEG":
-            rgb_image = Image.new('RGB', self.image.size, (255, 255, 255))
-            rgb_image.paste(self.image, mask=self.image.split()[3] if self.image.mode == 'RGBA' else None)
-            rgb_image.save(output, format=format, quality=95)
-        else:
-            self.image.save(output, format=format)
-        
-        return output.getvalue()
+    # Fallback to default font (might not support Hebrew well)
+    print("[Text Overlay] WARNING: Using default font (Hebrew support may be limited)")
+    return ImageFont.load_default()
 
 
-async def add_hebrew_text_to_image(
+def add_text_to_image(
     image_bytes: bytes,
     text: str,
-    x: int,
-    y: int,
-    font_size: int = 60,
-    color: str = "#FFFFFF",
-    stroke_color: str = "#000000",
-    stroke_width: int = 2
+    position: Tuple[int, int],
+    font_size: int = DEFAULT_FONT_SIZE,
+    font_color: Tuple[int, int, int, int] = DEFAULT_FONT_COLOR,
+    stroke_color: Optional[Tuple[int, int, int, int]] = DEFAULT_STROKE_COLOR,
+    stroke_width: int = DEFAULT_STROKE_WIDTH,
+    bold: bool = False,
+    align: str = "right"  # "left", "center", "right" (right for Hebrew)
 ) -> bytes:
-    """Add Hebrew text overlay to image"""
+    """
+    Add text overlay to an image with Hebrew support
     
-    overlay = TextOverlay(image_bytes)
-    overlay.add_text(
-        text=text,
-        position=(x, y),
-        font_size=font_size,
-        color=color,
-        stroke_color=stroke_color,
-        stroke_width=stroke_width
-    )
+    Args:
+        image_bytes: Original image bytes
+        text: Text to add (supports Hebrew RTL)
+        position: (x, y) position for text (top-left corner)
+        font_size: Font size in pixels
+        font_color: RGBA color tuple for text
+        stroke_color: RGBA color tuple for text outline (None for no outline)
+        stroke_width: Width of text outline
+        bold: Use bold font variant
+        align: Text alignment ("left", "center", "right")
     
-    return overlay.get_image_bytes()
+    Returns:
+        Modified image bytes
+    """
+    
+    try:
+        # Load image
+        img = Image.open(io.BytesIO(image_bytes))
+        
+        # Convert to RGBA for transparency support
+        if img.mode != 'RGBA':
+            img = img.convert('RGBA')
+        
+        # Create a transparent overlay for text
+        txt_layer = Image.new('RGBA', img.size, (255, 255, 255, 0))
+        draw = ImageDraw.Draw(txt_layer)
+        
+        # Get font
+        font = get_hebrew_font(font_size, bold)
+        
+        # Get text bounding box for positioning
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        
+        # Adjust position based on alignment
+        x, y = position
+        if align == "center":
+            x = x - text_width // 2
+        elif align == "right":
+            x = x - text_width
+        # left alignment uses x as-is
+        
+        # Ensure text is within image bounds
+        x = max(0, min(x, img.width - text_width))
+        y = max(0, min(y, img.height - text_height))
+        
+        # Draw text with outline (stroke) if specified
+        if stroke_color and stroke_width > 0:
+            draw.text(
+                (x, y),
+                text,
+                font=font,
+                fill=font_color,
+                stroke_fill=stroke_color,
+                stroke_width=stroke_width
+            )
+        else:
+            draw.text(
+                (x, y),
+                text,
+                font=font,
+                fill=font_color
+            )
+        
+        # Composite the text layer onto the original image
+        img = Image.alpha_composite(img, txt_layer)
+        
+        # Convert back to RGB if needed
+        if img.mode == 'RGBA':
+            # Create white background
+            background = Image.new('RGB', img.size, (255, 255, 255))
+            background.paste(img, mask=img.split()[3])  # Use alpha channel as mask
+            img = background
+        
+        # Save to bytes
+        output = io.BytesIO()
+        img.save(output, format='PNG')
+        output.seek(0)
+        
+        print(f"[Text Overlay] Added text '{text}' at position {position}")
+        return output.getvalue()
+    
+    except Exception as e:
+        print(f"[Text Overlay] Error: {e}")
+        raise Exception(f"Failed to add text to image: {str(e)}")
 
 
-async def suggest_text_positions(
-    width: int,
-    height: int,
-    aspect_ratio: str
-) -> List[Dict]:
-    """Suggest smart text positions based on image size"""
+def preview_text_positions(
+    image_bytes: bytes,
+    text: str,
+    font_size: int = DEFAULT_FONT_SIZE
+) -> list[dict]:
+    """
+    Suggest good positions for text based on image content
+    Returns list of suggested positions with coordinates
+    """
     
-    if aspect_ratio == "9:16":
-        # Vertical format - suggest top, middle, bottom
-        positions = [
-            {"name": "top", "x": width // 2, "y": 100},
-            {"name": "middle", "x": width // 2, "y": height // 2},
-            {"name": "bottom", "x": width // 2, "y": height - 200}
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        width, height = img.size
+        
+        # Get font to calculate text dimensions
+        font = get_hebrew_font(font_size)
+        draw = ImageDraw.Draw(img)
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        
+        # Suggest positions (avoid edges)
+        margin = 50
+        suggestions = [
+            {"name": "Top Center", "position": [width // 2, margin + text_height]},
+            {"name": "Top Right", "position": [width - margin, margin + text_height]},
+            {"name": "Top Left", "position": [margin + text_width, margin + text_height]},
+            {"name": "Center", "position": [width // 2, height // 2]},
+            {"name": "Bottom Center", "position": [width // 2, height - margin - text_height]},
+            {"name": "Bottom Right", "position": [width - margin, height - margin - text_height]},
+            {"name": "Bottom Left", "position": [margin + text_width, height - margin - text_height]},
         ]
-    else:
-        # Horizontal format
-        positions = [
-            {"name": "top_left", "x": 100, "y": 100},
-            {"name": "top_center", "x": width // 2, "y": 100},
-            {"name": "center", "x": width // 2, "y": height // 2},
-            {"name": "bottom_center", "x": width // 2, "y": height - 150}
-        ]
+        
+        return suggestions
     
-    return positions
-
-
-
-
-
-
-
-
-
+    except Exception as e:
+        print(f"[Text Overlay] Error previewing positions: {e}")
+        return []

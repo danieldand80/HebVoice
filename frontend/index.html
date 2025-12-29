@@ -112,7 +112,11 @@
                 </div>
 
                 <div class="actions">
-                    <button type="button" id="editBtn" class="btn-primary">
+                    <button type="button" id="addTextBtn" class="btn-primary">
+                        <span data-en="✍️ Add Text" data-he="✍️ הוסף טקסט">✍️ הוסף טקסט</span>
+                    </button>
+
+                    <button type="button" id="editBtn" class="btn-secondary">
                         <span data-en="✏️ Edit Prompt" data-he="✏️ ערוך פרומפט">✏️ ערוך פרומפט</span>
                     </button>
 
@@ -129,6 +133,106 @@
 
         <div id="error" class="error" style="display: none;"></div>
         <div id="success" class="success" style="display: none;"></div>
+    </div>
+
+    <!-- Text Editor Modal -->
+    <div id="textEditorModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-en="Add Text to Image" data-he="הוסף טקסט לתמונה">הוסף טקסט לתמונה</h2>
+                <button class="modal-close" id="closeTextEditor">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="editor-container">
+                    <!-- Canvas for image + text preview -->
+                    <div class="canvas-wrapper">
+                        <canvas id="textCanvas"></canvas>
+                        <div id="textDragElement" class="text-drag-element" style="display: none;">
+                            <span id="textPreview"></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Controls -->
+                    <div class="editor-controls">
+                        <div class="form-group">
+                            <label data-en="Text:" data-he="טקסט:">טקסט:</label>
+                            <textarea 
+                                id="textInput" 
+                                rows="3"
+                                data-placeholder-en="Enter your text here..."
+                                data-placeholder-he="הכנס את הטקסט שלך כאן..."
+                                placeholder="הכנס את הטקסט שלך כאן..."
+                                dir="auto"
+                            ></textarea>
+                            <button type="button" id="suggestTextBtn" class="btn-secondary small-btn">
+                                <span data-en="💡 Suggest Text" data-he="💡 הצע טקסט">💡 הצע טקסט</span>
+                            </button>
+                        </div>
+
+                        <div id="textSuggestions" class="text-suggestions" style="display: none;">
+                            <!-- AI-generated text suggestions will appear here -->
+                        </div>
+
+                        <div class="form-group">
+                            <label data-en="Font Size:" data-he="גודל פונט:">גודל פונט:</label>
+                            <input type="range" id="fontSize" min="20" max="150" value="48" step="1">
+                            <span id="fontSizeValue">48px</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="boldFont">
+                                <span data-en="Bold" data-he="מודגש">מודגש</span>
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label data-en="Text Color:" data-he="צבע טקסט:">צבע טקסט:</label>
+                            <input type="color" id="textColor" value="#ffffff">
+                        </div>
+
+                        <div class="form-group">
+                            <label data-en="Outline Color:" data-he="צבע מתאר:">צבע מתאר:</label>
+                            <input type="color" id="outlineColor" value="#000000">
+                        </div>
+
+                        <div class="form-group">
+                            <label data-en="Outline Width:" data-he="עובי מתאר:">עובי מתאר:</label>
+                            <input type="range" id="outlineWidth" min="0" max="10" value="2" step="1">
+                            <span id="outlineWidthValue">2px</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label data-en="Text Alignment:" data-he="יישור טקסט:">יישור טקסט:</label>
+                            <div class="align-selector">
+                                <label>
+                                    <input type="radio" name="textAlign" value="left">
+                                    <span data-en="Left" data-he="שמאל">שמאל</span>
+                                </label>
+                                <label>
+                                    <input type="radio" name="textAlign" value="center">
+                                    <span data-en="Center" data-he="מרכז">מרכז</span>
+                                </label>
+                                <label>
+                                    <input type="radio" name="textAlign" value="right" checked>
+                                    <span data-en="Right" data-he="ימין">ימין</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="editor-actions">
+                            <button type="button" id="applyTextBtn" class="btn-primary">
+                                <span data-en="✅ Apply Text" data-he="✅ החל טקסט">✅ החל טקסט</span>
+                            </button>
+                            <button type="button" id="cancelTextBtn" class="btn-secondary">
+                                <span data-en="Cancel" data-he="ביטול">ביטול</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="/static/script.js"></script>

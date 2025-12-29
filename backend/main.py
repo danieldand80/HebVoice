@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 import base64
 
 from services.imagen_service import generate_image_from_prompt, edit_image_with_prompt
-from services.text_overlay_service import add_hebrew_text_to_image, suggest_text_positions
+from services.text_overlay_service import add_text_to_image, preview_text_positions
 from services.text_generation_service import generate_hebrew_marketing_text
 
 load_dotenv()
@@ -132,18 +132,10 @@ async def generate_image(
                 "height": height
             })
         
-        # Use first image for text positioning suggestions (legacy)
-        if generated_images:
-            first_img = generated_images[0]
-            positions = await suggest_text_positions(first_img["width"], first_img["height"], aspect_ratio)
-        else:
-            positions = []
-        
         return {
             "success": True,
             "images": generated_images,
-            "count": len(generated_images),
-            "suggested_positions": positions
+            "count": len(generated_images)
         }
         
     except Exception as e:
@@ -177,16 +169,48 @@ async def suggest_texts(
         print(f"ERROR: {error_detail}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/preview-text-positions")
+async def get_text_positions(
+    image_id: str = Form(...),
+    text: str = Form(...),
+    font_size: int = Form(default=48)
+):
+    """Get suggested text positions for an image"""
+    try:
+        # Load image
+        image_path = OUTPUT_DIR / f"{image_id}.png"
+        if not image_path.exists():
+            raise HTTPException(status_code=404, detail="Image not found")
+        
+        with open(image_path, "rb") as f:
+            image_bytes = f.read()
+        
+        # Get position suggestions
+        positions = preview_text_positions(image_bytes, text, font_size)
+        
+        return {
+            "success": True,
+            "positions": positions
+        }
+        
+    except Exception as e:
+        import traceback
+        error_detail = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+        print(f"ERROR: {error_detail}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/add-text")
-async def add_text_to_image(
+async def add_text_endpoint(
     image_id: str = Form(...),
     text: str = Form(...),
     x: int = Form(...),
     y: int = Form(...),
-    font_size: int = Form(default=60),
-    color: str = Form(default="#FFFFFF"),
-    stroke_color: str = Form(default="#000000"),
-    stroke_width: int = Form(default=2)
+    font_size: int = Form(default=48),
+    font_color: str = Form(default="255,255,255,255"),
+    stroke_color: str = Form(default="0,0,0,255"),
+    stroke_width: int = Form(default=2),
+    bold: bool = Form(default=False),
+    align: str = Form(default="right")
 ):
     """Add Hebrew text to generated image"""
     try:
@@ -198,20 +222,30 @@ async def add_text_to_image(
         with open(image_path, "rb") as f:
             image_bytes = f.read()
         
+        # Parse color strings (R,G,B,A)
+        try:
+            font_rgba = tuple(int(c) for c in font_color.split(','))
+            stroke_rgba = tuple(int(c) for c in stroke_color.split(',')) if stroke_color else None
+        except:
+            font_rgba = (255, 255, 255, 255)
+            stroke_rgba = (0, 0, 0, 255)
+        
         # Add text overlay
-        result_bytes = await add_hebrew_text_to_image(
+        result_bytes = add_text_to_image(
             image_bytes=image_bytes,
             text=text,
-            x=x,
-            y=y,
+            position=(x, y),
             font_size=font_size,
-            color=color,
-            stroke_color=stroke_color,
-            stroke_width=stroke_width
+            font_color=font_rgba,
+            stroke_color=stroke_rgba,
+            stroke_width=stroke_width,
+            bold=bold,
+            align=align
         )
         
-        # Save result
-        result_path = OUTPUT_DIR / f"{image_id}_final.png"
+        # Save result with new ID
+        result_id = f"{image_id}_text"
+        result_path = OUTPUT_DIR / f"{result_id}.png"
         with open(result_path, "wb") as f:
             f.write(result_bytes)
         
@@ -220,7 +254,8 @@ async def add_text_to_image(
         
         return {
             "success": True,
-            "image_url": f"/api/image/{image_id}_final",
+            "image_id": result_id,
+            "image_url": f"/api/image/{result_id}",
             "image_base64": f"data:image/png;base64,{result_base64}"
         }
         
