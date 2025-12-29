@@ -107,13 +107,21 @@ def add_text_to_image(
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
         
-        # Adjust position based on alignment
-        x, y = position
-        if align == "center":
-            x = x - text_width // 2
+        # Adjust position based on alignment RELATIVE TO IMAGE
+        x_offset, y = position
+        
+        if align == "left":
+            # Left align: x_offset is from left edge
+            x = x_offset
+        elif align == "center":
+            # Center align: center the text on image, x_offset is ignored
+            x = (img.width - text_width) // 2
         elif align == "right":
-            x = x - text_width
-        # left alignment uses x as-is
+            # Right align: x_offset is from right edge (margin)
+            x = img.width - x_offset - text_width
+        else:
+            # Default to left
+            x = x_offset
         
         # Ensure text is within image bounds
         x = max(0, min(x, img.width - text_width))

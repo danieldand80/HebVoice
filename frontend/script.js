@@ -497,15 +497,20 @@ function drawTextOnCanvas() {
     canvasCtx.font = `${bold ? 'bold' : 'normal'} ${size}px ${font}`;
     canvasCtx.textBaseline = 'top';
     
-    // Calculate text position based on alignment
+    // Calculate text position based on alignment RELATIVE TO IMAGE
     const metrics = canvasCtx.measureText(text);
     const textWidth = metrics.width;
     
-    let drawX = textPosition.x;
-    if (align === 'center') {
-        drawX = textPosition.x - textWidth / 2;
+    let drawX;
+    if (align === 'left') {
+        // Left align: X position is from left edge of canvas
+        drawX = textPosition.x;
+    } else if (align === 'center') {
+        // Center align: center the text on canvas, Y is free position
+        drawX = (textCanvas.width - textWidth) / 2;
     } else if (align === 'right') {
-        drawX = textPosition.x - textWidth;
+        // Right align: X position is from right edge of canvas
+        drawX = textCanvas.width - textPosition.x - textWidth;
     }
     
     // Draw outline (stroke)
@@ -707,12 +712,23 @@ applyTextBtn.addEventListener('click', async () => {
         
         const data = await response.json();
         
+        console.log('[Apply Text] Success:', data);
+        
         // Update current image with text version
         currentImageId = data.image_id;
         currentImageData = data;
-        generatedImage.src = data.image_base64;
         
-        // Update the selected image in grid if visible
+        // Update main result image
+        generatedImage.src = data.image_base64;
+        generatedImage.style.display = 'block';
+        
+        // Hide grid and show single image with text
+        const grid = document.getElementById('imagesGrid');
+        if (grid) {
+            grid.style.display = 'none';
+        }
+        
+        // Update the selected image in grid data (but keep it hidden)
         const selectedImageItem = document.querySelector('.image-item.selected');
         if (selectedImageItem) {
             const img = selectedImageItem.querySelector('img');
@@ -726,11 +742,15 @@ applyTextBtn.addEventListener('click', async () => {
             }
         }
         
+        // Close modal
         closeTextEditorModal();
         
-        // Show step 2 with the result
+        // Ensure step 2 is visible with result
         step1.style.display = 'none';
         step2.style.display = 'block';
+        
+        // Scroll to result
+        generatedImage.scrollIntoView({ behavior: 'smooth', block: 'center' });
         
         showSuccess(currentLang === 'en' ? 'Text added successfully!' : 'הטקסט נוסף בהצלחה!');
         
