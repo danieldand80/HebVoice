@@ -16,6 +16,15 @@ const translations = {
     }
 };
 
+// Goal Preset Prompts (English only)
+const goalPresets = {
+    facebook_ads: "Create a vibrant, eye-catching image optimized for Facebook/Instagram ads with engaging visual elements, bright colors, professional product placement, and modern advertising aesthetic. High quality, attention-grabbing composition.",
+    instagram_story: "Design a dynamic, vertical format image perfect for Instagram Stories and Reels with bold typography space, trendy aesthetic, engaging visual flow, and mobile-first composition. Modern, shareable content style.",
+    youtube_thumbnail: "Generate a dramatic, attention-grabbing YouTube thumbnail with high contrast, bold visual elements, clickable aesthetic, and professional presentation. Eye-catching composition designed to maximize click-through rate.",
+    product_showcase: "Create a clean, professional product showcase image with premium aesthetic, minimalist background, excellent lighting, commercial photography style, and focus on product details. Studio-quality presentation.",
+    professional_post: "Design a sophisticated, professional social media post with clean composition, business-appropriate aesthetic, modern minimalist style, and polished presentation. Corporate-quality visual content."
+};
+
 // Get translated text
 function t(key) {
     return translations[currentLang][key] || key;
@@ -29,6 +38,8 @@ const removeImageBtn = document.getElementById('removeImageBtn');
 const generateBtn = document.getElementById('generateBtn');
 const generateBtnText = document.getElementById('generateBtnText');
 const generateLoader = document.getElementById('generateLoader');
+const goalPresetSelect = document.getElementById('goalPreset');
+const promptTextarea = document.getElementById('prompt');
 
 const step1 = document.getElementById('step1');
 const step2 = document.getElementById('step2');
@@ -64,6 +75,27 @@ removeImageBtn.addEventListener('click', () => {
     imageInput.value = '';
     imagePreview.innerHTML = '';
     removeImageBtn.style.display = 'none';
+});
+
+// Goal preset selection - auto-fill prompt
+goalPresetSelect.addEventListener('change', (e) => {
+    const selectedPreset = e.target.value;
+    
+    if (selectedPreset && goalPresets[selectedPreset]) {
+        // Get current prompt value
+        const currentPrompt = promptTextarea.value.trim();
+        
+        // If prompt is empty or is a preset prompt, replace with new preset
+        const isPresetPrompt = Object.values(goalPresets).some(preset => currentPrompt.startsWith(preset.substring(0, 50)));
+        
+        if (!currentPrompt || isPresetPrompt) {
+            // Replace with new preset
+            promptTextarea.value = goalPresets[selectedPreset];
+        } else {
+            // Append preset to existing custom text
+            promptTextarea.value = goalPresets[selectedPreset] + ' ' + currentPrompt;
+        }
+    }
 });
 
 // Generate image
@@ -351,6 +383,9 @@ function toggleLanguage() {
         const text = currentLang === 'en' ? el.getAttribute('data-en') : el.getAttribute('data-he');
         if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
             el.placeholder = text;
+        } else if (el.tagName === 'OPTION') {
+            // Update option text
+            el.textContent = text;
         } else {
             el.textContent = text;
         }

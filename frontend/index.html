@@ -46,25 +46,16 @@
                 </div>
 
                 <div class="form-group">
-                    <label data-en="Number of Images:" data-he="מספר תמונות:">מספר תמונות:</label>
-                    <div class="num-images-selector">
-                        <label class="num-option">
-                            <input type="radio" name="num_images" value="1" checked>
-                            <span>1</span>
-                        </label>
-                        <label class="num-option">
-                            <input type="radio" name="num_images" value="2">
-                            <span>2</span>
-                        </label>
-                        <label class="num-option">
-                            <input type="radio" name="num_images" value="3">
-                            <span>3</span>
-                        </label>
-                        <label class="num-option">
-                            <input type="radio" name="num_images" value="4">
-                            <span>4</span>
-                        </label>
-                    </div>
+                    <label for="goalPreset" data-en="Choose Goal (Optional):" data-he="בחר מטרה (אופציונלי):">בחר מטרה (אופציונלי):</label>
+                    <select id="goalPreset" name="goal_preset">
+                        <option value="" data-en="-- Custom/None --" data-he="-- ללא תבנית --">-- ללא תבנית --</option>
+                        <option value="facebook_ads" data-en="📱 Facebook/Instagram Ads" data-he="📱 פרסום בפייסבוק/אינסטגרם">📱 פרסום בפייסבוק/אינסטגרם</option>
+                        <option value="instagram_story" data-en="📸 Instagram Story/Reels" data-he="📸 סטורי/רילס אינסטגרם">📸 סטורי/רילס אינסטגרם</option>
+                        <option value="youtube_thumbnail" data-en="🎥 YouTube Thumbnail" data-he="🎥 תמונת פתיח יוטיוב">🎥 תמונת פתיח יוטיוב</option>
+                        <option value="product_showcase" data-en="🛍️ Product Showcase" data-he="🛍️ תצוגת מוצר">🛍️ תצוגת מוצר</option>
+                        <option value="professional_post" data-en="✨ Professional Post" data-he="✨ פוסט מקצועי">✨ פוסט מקצועי</option>
+                    </select>
+                    <small data-en="Select a goal to auto-fill prompt with professional template" data-he="בחר מטרה למילוי אוטומטי של פרומפט מקצועי">בחר מטרה למילוי אוטומטי של פרומפט מקצועי</small>
                 </div>
 
                 <div class="form-group">

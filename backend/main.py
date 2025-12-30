@@ -44,18 +44,17 @@ async def root():
 async def generate_image(
     prompt: str = Form(default=""),
     aspect_ratio: str = Form(default="16:9"),
-    num_images: int = Form(default=1),
+    num_images: int = Form(default=4),
     image: UploadFile = File(None)
 ):
-    """Generate image(s) using Imagen (Nano Banana)"""
+    """Generate image(s) using Imagen (Nano Banana) - Always generates 4 images"""
     try:
         # Check if Google AI API is configured
         if not os.getenv("GOOGLE_API_KEY"):
             raise HTTPException(status_code=500, detail="GOOGLE_API_KEY not configured")
         
-        # Validate num_images
-        if num_images < 1 or num_images > 4:
-            num_images = 1
+        # Always generate 4 images
+        num_images = 4
         
         # Validate: either prompt or image must be provided
         if not prompt.strip() and not image:

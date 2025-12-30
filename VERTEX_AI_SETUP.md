@@ -313,3 +313,4 @@ USE_VERTEX_AI=true  # Включи в Railway Variables
 
 
 
+
