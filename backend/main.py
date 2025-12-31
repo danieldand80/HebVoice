@@ -38,7 +38,13 @@ app.mount("/static", StaticFiles(directory=str(frontend_dir)), name="static")
 
 @app.get("/")
 async def root():
-    return FileResponse(str(frontend_dir / "index.html"))
+    """Landing page"""
+    return FileResponse(str(frontend_dir / "landing.html"))
+
+@app.get("/app")
+async def app_page():
+    """Main application"""
+    return FileResponse(str(frontend_dir / "app.html"))
 
 @app.post("/api/generate-image")
 async def generate_image(
